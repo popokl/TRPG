@@ -3,142 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="robots" content="noindex, nofollow">
-    <title>🎲 TRPG 祕密跑團室 & 可縮放戰術地圖</title>
+    <title>🎲 TRPG 祕密跑團室</title>
     <style>
-        html, body { 
-            margin: 0; 
-            padding: 0; 
-            width: 100%; 
-            height: 100%; 
-            overflow: hidden; 
-            background: #555555; 
-            font-family: sans-serif; 
-            color: #fff;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        /* 上方精簡控制列 */
-        .control-panel { 
-            display: flex; 
-            gap: 15px; 
-            padding: 10px 20px;
-            background: #2a2a2a;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            z-index: 10;
-            align-items: center;
-        }
-        .box { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-        input { background: #333; color: #fff; border: 1px solid #555; padding: 5px; border-radius: 4px; }
-        input[type="text"] { width: 90px; }
-        input[type="number"] { width: 50px; }
-        button { background: #4a90e2; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #555; font-family: sans-serif; color: #fff; display: flex; flex-direction: column; }
+        .bar { display: flex; gap: 12px; padding: 10px 20px; background: #2a2a2a; box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 10; align-items: center; }
+        .main-content { flex: 1; display: flex; flex-direction: row; width: 100vw; overflow: hidden; position: relative; }
+        .left-sidebar { width: 180px; background: #222; padding: 20px 15px; display: flex; flex-direction: column; gap: 15px; box-shadow: 2px 0 5px rgba(0,0,0,0.3); z-index: 9; box-sizing: border-box; }
+        .sidebar-item { display: flex; flex-direction: column; gap: 5px; font-size: 14px; }
+        input { background: #333; color: #fff; border: 1px solid #555; padding: 6px; border-radius: 4px; box-sizing: border-box; width: 100%; }
+        button { background: #4a90e2; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; white-space: nowrap; }
         button:hover { background: #357abd; }
-        .dice-result { color: #ffcc00; font-weight: bold; margin-left: 5px; }
-        
-        /* 地圖視窗容器 */
-        .map-container { 
-            flex: 1; 
-            position: relative; 
-            width: 100vw; 
-            overflow: hidden; 
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #444444; 
-            cursor: grab;
-            user-select: none;
-        }
-        .map-container:active {
-            cursor: grabbing;
-        }
-        
-        /* 地圖本體 */
-        #mapWrapper {
-            position: absolute;
-            width: min(calc(100vw - 40px), calc(100vh - 120px));
-            height: min(calc(100vw - 40px), calc(100vh - 120px));
-            background-color: #dddddd; 
-            background-size: 100% 100%; 
-            background-repeat: no-repeat;
-            background-position: center;
-            border: 2px solid #222; 
-            box-shadow: 0 0 25px rgba(0,0,0,0.5);
-            transform-origin: center center;
-            will-change: transform;
-        }
-        
-        .grid-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
+        .map-container { flex: 1; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; background: #444; cursor: grab; user-select: none; }
+        .map-container:active { cursor: grabbing; }
+        #mapWrapper { position: absolute; width: min(calc(100vw - 220px), calc(100vh - 140px)); height: min(calc(100vw - 220px), calc(100vh - 140px)); background-color: #dddddd; background-size: 100% 100%; background-repeat: no-repeat; background-position: center; border: 2px solid #222; box-shadow: 0 0 25px rgba(0,0,0,0.5); transform-origin: center center; will-change: transform; }
+        .grid-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <div class="control-panel">
-        <div class="box">
-            <span>👤 角色：</span>
-            <input type="text" id="charName" placeholder="名字" oninput="saveData()"> 
-            <span>HP：</span><input type="number" id="charHP" value="10" oninput="saveData()"> 
-            <span>SAN：</span><input type="number" id="charSAN" value="50" oninput="saveData()">
+    <!-- 【網頁上方：捷徑工具列】 -->
+    <div class="bar">
+        <span style="font-weight:bold;">🎲 擲骰檢定：</span>
+        <button onclick="rollDice(100)">D100</button>
+        <button onclick="rollDice(20)" style="background:#27ae60;">D20</button>
+        <button onclick="rollDice(10)" style="background:#d35400;">D10</button>
+        <button onclick="rollDice(6)" style="background:#8e44ad;">D6</button>
+        <button onclick="rollDice(4)" style="background:#2980b9;">D4</button>
+        <span class="dice-result" id="diceOutput" style="color:#ffcc00; font-weight:bold; margin-left:10px;">等待擲骰...</span>
+    </div>
+
+    <!-- 【網頁主體】 -->
+    <div class="main-content">
+        <!-- 【網頁左邊：角色資訊欄】 -->
+        <div class="left-sidebar">
+            <h3 style="margin:0 0 5px 0; border-bottom:1px solid #444; padding-bottom:5px; color:#4a90e2;">👤 角色資訊</h3>
+            <div class="sidebar-item"><label>角色姓名：</label><input type="text" id="charName" oninput="saveData()"></div>
+            <div class="sidebar-item"><label>目前血量 (HP)：</label><input type="number" id="charHP" value="10" oninput="saveData()"></div>
+            <div class="sidebar-item"><label>理智值 (SAN)：</label><input type="number" id="charSAN" value="50" oninput="saveData()"></div>
         </div>
 
-        <div class="box" style="border-left: 1px solid #555; padding-left: 15px;">
-            <label for="mapUpload" style="background:#e67e22; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:14px;">🖼️ 上傳地圖</label>
-            <input type="file" id="mapUpload" accept="image/*" style="display:none;" onchange="uploadMap(event)">
-            <button onclick="clearMap()" style="background:#c0392b;">重設</button>
-            <button onclick="resetZoom()" style="background:#7f8c8d;">居中復原</button>
-        </div>
-
-        <div class="box" style="border-left: 1px solid #555; padding-left: 15px;">
-            <button onclick="rollDice(100)">D100</button>
-            <button onclick="rollDice(20)" style="background:#27ae60;">D20</button>
-            <button onclick="rollDice(6)" style="background:#8e44ad;">D6</button>
-            <span class="dice-result" id="diceOutput">--</span>
+        <!-- 戰術地圖區 -->
+        <div class="map-container" id="mapContainer">
+            <div id="mapWrapper">
+                <svg class="grid-layer" viewBox="0 0 500 500" xmlns="http://w3.org">
+                    <defs>
+                        <pattern id="trpg-grid" width="10" height="10" patternUnits="userSpaceOnUse">
+                            <path d="M 10 0 L 0 0 L 0 10" fill="none" stroke="rgba(0, 0, 0, 0.65)" stroke-width="1.2"/>
+                        </pattern>
+                    </defs>
+                    <rect width="500" height="500" fill="url(#trpg-grid)" stroke="rgba(0, 0, 0, 0.65)" stroke-width="1.2" />
+                </svg>
+            </div>
         </div>
     </div>
 
-    <!-- 地圖視窗 -->
-    <div class="map-container" id="mapContainer">
-        <div id="mapWrapper">
-            <svg class="grid-layer" viewBox="0 0 500 500" xmlns="http://w3.org">
-                <defs>
-                    <pattern id="trpg-grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                        <!-- 【核心修正】將顏色加深至不透明度 0.65，線條粗細 stroke-width 調粗至 1.2（原本為 0.4） -->
-                        <path d="M 10 0 L 0 0 L 0 10" fill="none" stroke="rgba(0, 0, 0, 0.65)" stroke-width="1.2"/>
-                    </pattern>
-                </defs>
-                <!-- 為地圖邊緣額外補上外圍黑框，確保最右側和最下方的邊緣封閉線條一致清晰 -->
-                <rect width="500" height="500" fill="url(#trpg-grid)" stroke="rgba(0, 0, 0, 0.65)" stroke-width="1.2" />
-            </svg>
-        </div>
+    <!-- 【網頁下方：地圖管理工具列】 -->
+    <div class="bar" style="box-shadow:0 -2px 5px rgba(0,0,0,0.3);">
+        <span style="font-weight:bold;">🗺️ 地圖管理：</span>
+        <label for="mapUpload" style="background:#e67e22; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:14px;">🖼️ 上傳新地圖圖片</label>
+        <input type="file" id="mapUpload" accept="image/*" style="display:none;" onchange="uploadMap(event)">
+        <button onclick="clearMap()" style="background:#c0392b;">❌ 重設空白地圖</button>
+        <button onclick="resetZoom()" style="background:#7f8c8d;">🎯 居中復原畫布</button>
     </div>
 
     <script>
-        let scale = 1;
-        let posX = 0;
-        let posY = 0;
-        let isDragging = false;
-        let startX, startY;
-
-        const mapContainer = document.getElementById('mapContainer');
-        const mapWrapper = document.getElementById('mapWrapper');
+        let scale = 1, posX = 0, posY = 0, isDragging = false, startX, startY;
+        const mapContainer = document.getElementById('mapContainer'), mapWrapper = document.getElementById('mapWrapper');
 
         window.onload = function() {
             if (localStorage.getItem("trpg_name")) document.getElementById("charName").value = localStorage.getItem("trpg_name");
             if (localStorage.getItem("trpg_hp")) document.getElementById("charHP").value = localStorage.getItem("trpg_hp");
             if (localStorage.getItem("trpg_san")) document.getElementById("charSAN").value = localStorage.getItem("trpg_san");
-            
             const savedMap = localStorage.getItem("trpg_map_bg");
-            if (savedMap) {
-                mapWrapper.style.backgroundImage = `url('${savedMap}')`;
-            }
-
+            if (savedMap) mapWrapper.style.backgroundImage = `url('${savedMap}')`;
             initMapControls();
         }
 
@@ -146,83 +83,28 @@
             function handleZoom(e) {
                 e.preventDefault();
                 const delta = e.deltaY ? -e.deltaY : e.wheelDelta;
-                const zoomSpeed = 0.1;
-
-                if (delta > 0) {
-                    scale += zoomSpeed;
-                } else {
-                    scale -= zoomSpeed;
-                }
-                
-                scale = Math.max(0.4, Math.min(6, scale));
+                scale = Math.max(0.4, Math.min(6, scale + (delta > 0 ? 0.1 : -0.1)));
                 updateTransform();
             }
-
             mapContainer.addEventListener('wheel', handleZoom, { passive: false });
             mapContainer.addEventListener('mousewheel', handleZoom, { passive: false });
-
-            mapContainer.addEventListener('mousedown', function(e) {
-                isDragging = true;
-                startX = e.clientX - posX;
-                startY = e.clientY - posY;
-            });
-
-            window.addEventListener('mousemove', function(e) {
-                if (!isDragging) return;
-                posX = e.clientX - startX;
-                posY = e.clientY - startY;
-                updateTransform();
-            });
-
-            window.addEventListener('mouseup', function() {
-                isDragging = false;
-            });
+            mapContainer.addEventListener('mousedown', (e) => { isDragging = true; startX = e.clientX - posX; startY = e.clientY - posY; });
+            window.addEventListener('mousemove', (e) => { if (!isDragging) return; posX = e.clientX - startX; posY = e.clientY - startY; updateTransform(); });
+            window.addEventListener('mouseup', () => { isDragging = false; });
         }
 
-        function updateTransform() {
-            mapWrapper.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
-        }
-
-        function resetZoom() {
-            scale = 1;
-            posX = 0;
-            posY = 0;
-            updateTransform();
-        }
-
-        function saveData() {
-            localStorage.setItem("trpg_name", document.getElementById("charName").value);
-            localStorage.setItem("trpg_hp", document.getElementById("charHP").value);
-            localStorage.setItem("trpg_san", document.getElementById("charSAN").value);
-        }
-
+        function updateTransform() { mapWrapper.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`; }
+        function resetZoom() { scale = 1; posX = 0; posY = 0; updateTransform(); }
+        function saveData() { localStorage.setItem("trpg_name", document.getElementById("charName").value); localStorage.setItem("trpg_hp", document.getElementById("charHP").value); localStorage.setItem("trpg_san", document.getElementById("charSAN").value); }
+        
         function uploadMap(event) {
-            const file = event.target.files; 
-            if (!file) return;
-
+            const file = event.target.files; if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(e) {
-                const imgData = e.target.result;
-                mapWrapper.style.backgroundImage = `url('${imgData}')`;
-                try {
-                    localStorage.setItem("trpg_map_bg", imgData);
-                } catch (error) {
-                    console.log("圖片體積較大，僅供本次即時顯示。");
-                }
-            };
+            reader.onload = function(e) { mapWrapper.style.backgroundImage = `url('${e.target.result}')`; try { localStorage.setItem("trpg_map_bg", e.target.result); } catch (err) {} };
             reader.readAsDataURL(file);
         }
-
-        function clearMap() {
-            mapWrapper.style.backgroundImage = "none";
-            localStorage.removeItem("trpg_map_bg");
-            document.getElementById("mapUpload").value = "";
-        }
-
-        function rollDice(sides) {
-            const result = Math.floor(Math.random() * sides) + 1;
-            document.getElementById("diceOutput").innerText = `D${sides}➔${result}`;
-        }
+        function clearMap() { mapWrapper.style.backgroundImage = "none"; localStorage.removeItem("trpg_map_bg"); document.getElementById("mapUpload").value = ""; }
+        function rollDice(sides) { document.getElementById("diceOutput").innerText = `🎲 D${sides} 結果 ➔ ${Math.floor(Math.random() * sides) + 1}`; }
     </script>
 </body>
 </html>
