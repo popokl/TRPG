@@ -59,7 +59,7 @@
             background-position: center;
         }
         
-        /* 滿版網格圖層：利用 SVG 向量特性，強制在畫面上完美平分成 50x50 格 */
+        /* 滿版網格圖層 */
         .grid-layer {
             position: absolute;
             top: 0;
@@ -97,12 +97,12 @@
     <!-- 畫面中央：完美滿版無拉桿地圖 -->
     <div class="map-container">
         <div id="mapWrapper">
-            <!-- 採用百分比 viewBox 繪製法，保證不管螢幕多大都一定是精準 50 等分，絕不卡死 -->
+            <!-- 採用 100x100 的 viewBox，每格寬高 2 單位代表 100/50 = 2 格 -->
             <svg class="grid-layer" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://w3.org">
                 <defs>
-                    <!-- 寬高各 2% 代表 100% / 50 格 = 2% -->
                     <pattern id="trpg-grid" width="2" height="2" patternUnits="userSpaceOnUse">
-                        <path d="M 2 0 L 0 0 0 2" fill="none" stroke="rgba(255, 255, 255, 0.25)" stroke-width="0.05"/>
+                        <!-- 使用 M 0 0 繪製 L 型線條，達成交叉網格 -->
+                        <path d="M 2 0 L 0 0 L 0 2" fill="none" stroke="rgba(255, 255, 255, 0.3)" stroke-width="0.05"/>
                     </pattern>
                 </defs>
                 <rect width="100" height="100" fill="url(#trpg-grid)" />
@@ -129,7 +129,8 @@
         }
 
         function uploadMap(event) {
-            const file = event.target.files[0]; // 修正多選錯誤，確保只抓第一張圖
+            // 【核心修正】精準獲取上傳的第一張圖片物件
+            const file = event.target.files[0]; 
             if (!file) return;
 
             const reader = new FileReader();
@@ -139,7 +140,7 @@
                 try {
                     localStorage.setItem("trpg_map_bg", imgData);
                 } catch (error) {
-                    alert("地圖已成功更新顯示！但因圖片檔案較大，下次重新開啟網頁時可能需要重新上傳。");
+                    console.log("圖片大於 5MB，僅供本次即時顯示。");
                 }
             };
             reader.readAsDataURL(file);
