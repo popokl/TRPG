@@ -82,6 +82,7 @@
             </div>
         </div>
     </div>
+    <!-- 下方懸浮工具列（已移除重設地圖按鈕） -->
     <div class="bottom-float">
         <div class="arrow-trigger">▲</div>
         <div class="bar bottom-bar">
@@ -89,7 +90,6 @@
                 <span style="font-weight:bold;white-space:nowrap;">地圖：</span>
                 <label class="upload-btn" for="mapUpload" style="background:#e67e22;">上傳圖片</label>
                 <input type="file" id="mapUpload" accept="image/*" style="display:none;" onchange="uploadMap(event)">
-                <button onclick="clearMap()" style="background:#c0392b;">重設地圖</button>
             </div>
             <div class="sub-section">
                 <span style="font-weight:bold;white-space:nowrap;">棋子：</span>
@@ -135,13 +135,13 @@
         function resetZoom(){scale=1,posX=0,posY=0,updateTransform();}
         function saveData(){localStorage.setItem("trpg_name",document.getElementById("charName").value),localStorage.setItem("trpg_hp",document.getElementById("charHP").value),localStorage.setItem("trpg_san",document.getElementById("charSAN").value);}
 
-        // 【安全重構】使用不衝突的變數命名，修復地圖上傳
         function uploadMap(evt){
             const mapFiles=evt.target.files;
             if(mapFiles.length){
                 const mapReader=new FileReader();
                 mapReader.onload=function(e){
                     const data=e.target.result;
+                    /* 【核心修改】每次上傳直接覆蓋替換背景，無須手動重設 */
                     mapWrapper.style.backgroundImage=`url('${data}')`;
                     try{localStorage.setItem("trpg_map_bg",data);}catch(err){}
                     
@@ -156,16 +156,27 @@
                     };
                     document.getElementById('mapPreviewArea').appendChild(box);
                 };
-                mapReader.readAsDataURL(mapFiles[0]);
+                mapReader.readAsDataURL(mapFiles);
             }
         }
 
-        document.getElementById('ctxDelBtn').onclick=function(){if(activeMapItem){ctxMenu.style.display='none';activeMapItem.remove();activeMapItem=null;}};
-        function clearMap(){mapWrapper.style.backgroundImage="none",localStorage.removeItem("trpg_map_bg"),document.getElementById("mapUpload").value="";}
+        /* 修改右鍵選單點擊：若被刪除的小圖剛好是目前的地圖，則清空地圖畫布背景 */
+        document.getElementById('ctxDelBtn').onclick=function(){
+            if(activeMapItem){
+                ctxMenu.style.display='none';
+                const bgUrl = activeMapItem.style.backgroundImage;
+                activeMapItem.remove();
+                activeMapItem=null;
+                if(mapWrapper.style.backgroundImage === bgUrl) {
+                    mapWrapper.style.backgroundImage = "none";
+                    localStorage.removeItem("trpg_map_bg");
+                }
+            }
+        };
+        
         function rollDice(e){document.getElementById("diceOutput").innerText=`D${e} 結果 ➔ ${Math.floor(Math.random()*e)+1}`;}
         document.querySelectorAll('.upload-btn').forEach(e=>{e.addEventListener('mousedown',e=>e.stopPropagation());});
 
-        // 【安全重構】使用不衝突的變數命名，修復棋子上傳
         function uploadToken(evt){
             const tokenFiles=evt.target.files;
             if(tokenFiles.length){
@@ -179,7 +190,7 @@
                     };
                     document.getElementById('tokenPreviewArea').appendChild(box),evt.target.value="";
                 };
-                tokenReader.readAsDataURL(tokenFiles[0]);
+                tokenReader.readAsDataURL(tokenFiles);
             }
         }
 
@@ -193,7 +204,6 @@
             mapWrapper.appendChild(n);
         }
 
-        // 【安全重構】使用不衝突的變數命名，修復狀態上傳
         function uploadStatus(evt){
             const statusFiles=evt.target.files;
             if(statusFiles.length){
@@ -204,7 +214,7 @@
                     box.onclick=function(){ spawnStatusMarker(data); };
                     document.getElementById('statusPreviewArea').appendChild(box),evt.target.value="";
                 };
-                statusReader.readAsDataURL(statusFiles[0]);
+                statusReader.readAsDataURL(statusFiles);
             }
         }
 
