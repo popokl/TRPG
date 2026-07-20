@@ -8,7 +8,7 @@
         html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#555; font-family:sans-serif; color:#fff; display:flex; flex-direction:column; }
         .bar { display:flex; gap:12px; padding:10px 20px; background:#2a2a2a; box-shadow:0 2px 5px rgba(0,0,0,0.3); z-index:10; align-items:center; }
         .main-content { flex:1; display:flex; flex-direction:row; width:100vw; overflow:hidden; position:relative; }
-        .left-sidebar { width:180px; background:#222; padding:15px 12px; display:flex; flex-direction:column; gap:15px; box-shadow:2px 0 5px rgba(0,0,0,0.3); z-index:9; box-sizing:border-box; overflow-y:auto; }
+        .left-sidebar { width:180px; background:#222; padding:20px 15px; display:flex; flex-direction:column; gap:15px; box-shadow:2px 0 5px rgba(0,0,0,0.3); z-index:9; box-sizing:border-box; }
         .sidebar-item { display:flex; flex-direction:column; gap:5px; font-size:14px; }
         input { background:#333; color:#fff; border:1px solid #555; padding:6px; border-radius:4px; box-sizing:border-box; width:100%; }
         button, .upload-btn { background:#4a90e2; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:bold; white-space:nowrap; font-size:14px; display:inline-block; }
@@ -17,31 +17,38 @@
         #mapWrapper { position:absolute; width:min(calc(100vw - 220px),calc(100vh - 100px)); height:min(calc(100vw - 220px),calc(100vh - 100px)); background-color:#dddddd; background-size:100% 100%; background-repeat:no-repeat; background-position:center; border:2px solid #222; box-shadow:0 0 25px rgba(0,0,0,0.5); transform-origin:center center; will-change:transform; }
         .grid-layer { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1; }
         
+        /* 棋子與標記 */
         .token { position:absolute; width:6%; height:6%; border-radius:50%; cursor:move; z-index:2; background-size:cover; background-position:center; box-shadow:0 4px 8px rgba(0,0,0,0.5); top:10px; left:10px; }
         .player-token { border:3px solid #2ecc71; }
         .enemy-token { border:3px solid #e74c3c; }
         .status-marker { position:absolute; width:4%; height:4%; border-radius:4px; border:2px solid #3498db; cursor:move; z-index:3; background-size:cover; background-position:center; box-shadow:0 3px 6px rgba(0,0,0,0.5); top:15px; left:15px; }
         
-        .sub-section { display:flex; align-items:center; gap:8px; border-right:1px solid #444; padding-right:15px; }
-        .sub-section:last-child { border-right:none; }
-        
-        .bottom-float { position:absolute; bottom:0; left:50%; transform:translate(-50%, calc(100% - 24px)); z-index:100; display:flex; flex-direction:column; align-items:center; transition:transform 0.25s ease; width:auto; max-width:90vw; }
+        /* 置中浮動快捷列 */
+        .bottom-float { position:absolute; bottom:0; left:50%; transform:translate(-50%, calc(100% - 24px)); z-index:100; display:flex; flex-direction:column; align-items:center; transition:transform 0.25s ease; }
         .arrow-trigger { background:#2a2a2a; color:#fff; padding:2px 20px; font-size:14px; font-weight:bold; border-radius:6px 6px 0 0; cursor:pointer; width:auto; text-align:center; }
-        .bottom-bar { height:45px; overflow:hidden; border-radius:6px 6px 0 0; border:1px solid #444; border-bottom:none; justify-content:center; }
+        .bottom-bar { height:45px; overflow:hidden; border-radius:6px 6px 0 0; border:1px solid #444; border-bottom:none; display:flex; gap:10px; padding:10px 20px; }
         .bottom-float:hover { transform:translate(-50%, 0); }
         .bottom-float:hover .arrow-trigger { opacity:0; pointer-events:none; }
-        .bottom-float:hover .bottom-bar { overflow-x:auto; }
         
-        .preview-title { margin:10px 0 5px 0; border-bottom:1px solid #444; padding-bottom:3px; color:#4a90e2; font-size:14px; font-weight:bold; }
-        .preview-box { display:flex; flex-wrap:wrap; gap:8px; background:#1a1a1a; padding:8px; border-radius:4px; min-height:40px; box-sizing:border-box; }
-        .p-map-item, .p-status-item { width:40px; height:40px; border:1px solid #666; cursor:pointer; background-size:cover; background-position:center; border-radius:4px; }
+        /* 【全新升級】彈出式視窗樣式 */
+        .modal { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#222; border:1px solid #555; border-radius:8px; padding:15px; box-shadow:0 10px 30px rgba(0,0,0,0.6); z-index:200; display:none; width:320px; max-height:70vh; flex-direction:column; gap:12px; }
+        .modal-header { display:flex; justify-content:between; align-items:center; border-bottom:1px solid #444; padding-bottom:6px; font-weight:bold; color:#4a90e2; }
+        .modal-header span { flex:1; }
+        .modal-close { cursor:pointer; font-weight:bold; color:#aaa; font-size:16px; border:none; background:none; padding:0 5px; }
+        .modal-close:hover { color:#fff; }
+        .modal-body { overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:10px; }
+        
+        /* 視窗內置預覽盒 */
+        .preview-box { display:flex; flex-wrap:wrap; gap:8px; background:#1a1a1a; padding:8px; border-radius:4px; min-height:60px; box-sizing:border-box; }
+        .p-map-item, .p-status-item { width:45px; height:40px; border:1px solid #666; cursor:pointer; background-size:cover; background-position:center; border-radius:4px; }
         .p-map-item:hover, .p-status-item:hover { border-color:#4a90e2; }
-        .p-token-item { width:35px; height:35px; border-radius:50%; cursor:pointer; background-size:cover; background-position:center; box-shadow:0 2px 4px rgba(0,0,0,0.3); border:2px solid #aaa; }
+        .p-token-item { width:40px; height:40px; border-radius:50%; cursor:pointer; background-size:cover; background-position:center; box-shadow:0 2px 4px rgba(0,0,0,0.3); border:2px solid #aaa; }
         .p-token-item:hover { border-color:#4a90e2; }
+        
         #ctxMenu { position:fixed; display:none; background:#2a2a2a; border:1px solid #555; padding:5px 0; border-radius:4px; box-shadow:0 2px 10px rgba(0,0,0,0.5); z-index:1000; font-size:14px; }
         .ctx-item { padding:6px 20px; cursor:pointer; white-space:nowrap; }
         .ctx-item:hover { background:#4a90e2; }
-        .reset-zoom-btn { position:fixed; bottom:20px; right:20px; background:#2a2a2a; color:#fff; border:1px solid #555; width:35px; height:35px; border-radius:50%; font-size:18px; font-weight:bold; cursor:pointer; display:flex; justify-content:center; align-items:center; z-index:101; box-shadow:0 2px 5px rgba(0,0,0,0.3); transition:background 0.2s; }
+        .reset-zoom-btn { position:fixed; bottom:20px; right:20px; background:#2a2a2a; color:#fff; border:1px solid #555; width:35px; height:35px; border-radius:50%; font-size:18px; font-weight:bold; cursor:pointer; display:flex; justify-content:center; align-items:center; z-index:101; box-shadow:0 2px 5px rgba(0,0,0,0.3); }
         .reset-zoom-btn:hover { background:#4a90e2; border-color:#4a90e2; }
     </style>
 </head>
@@ -56,53 +63,65 @@
         <button onclick="rollDice(4)" style="background:#2980b9;">D4</button>
         <span id="diceOutput" style="color:#ffcc00;font-weight:bold;margin-left:10px;">等待擲骰...</span>
     </div>
+    
     <div class="main-content">
+        <!-- 左側邊欄：回歸最純粹的角色資訊 -->
         <div class="left-sidebar">
             <h3 style="margin:0 0 5px 0;border-bottom:1px solid #444;padding-bottom:5px;color:#4a90e2;font-size:16px;">角色資訊</h3>
             <div class="sidebar-item"><label>角色姓名：</label><input type="text" id="charName" oninput="saveData()"></div>
             <div class="sidebar-item"><label>目前血量 (HP)：</label><input type="number" id="charHP" value="10" oninput="saveData()"></div>
             <div class="sidebar-item"><label>理智值 (SAN)：</label><input type="number" id="charSAN" value="50" oninput="saveData()"></div>
-            <div class="preview-title">地圖預覽區</div>
-            <div class="preview-box" id="mapPreviewArea"></div>
-            <div class="preview-title">棋子預覽區</div>
-            <div class="preview-box" id="tokenPreviewArea"></div>
-            <div class="preview-title">狀態預覽區</div>
-            <div class="preview-box" id="statusPreviewArea"></div>
         </div>
         <div class="map-container" id="mapContainer">
             <div id="mapWrapper">
                 <svg class="grid-layer" viewBox="0 0 500 500" xmlns="http://w3.org">
-                    <defs>
-                        <pattern id="trpg-grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                            <path d="M 10 0 L 0 0 L 0 10" fill="none" stroke="rgba(0, 0, 0, 0.65)" stroke-width="1.2"/>
-                        </pattern>
-                    </defs>
+                    <defs><pattern id="trpg-grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 L 0 10" fill="none" stroke="rgba(0, 0, 0, 0.65)" stroke-width="1.2"/></pattern></defs>
                     <rect width="500" height="500" fill="url(#trpg-grid)" stroke="rgba(0, 0, 0, 0.65)" stroke-width="1.2" />
                 </svg>
             </div>
         </div>
     </div>
-    <!-- 下方懸浮工具列（已移除重設地圖按鈕） -->
+
+    <!-- 下方快捷列：三大整合跳轉按鍵 -->
     <div class="bottom-float">
         <div class="arrow-trigger">▲</div>
         <div class="bar bottom-bar">
-            <div class="sub-section">
-                <span style="font-weight:bold;white-space:nowrap;">地圖：</span>
-                <label class="upload-btn" for="mapUpload" style="background:#e67e22;">上傳圖片</label>
-                <input type="file" id="mapUpload" accept="image/*" style="display:none;" onchange="uploadMap(event)">
-            </div>
-            <div class="sub-section">
-                <span style="font-weight:bold;white-space:nowrap;">棋子：</span>
-                <label class="upload-btn" for="tokenUpload" style="background:#2ecc71;">上傳棋子圖片</label>
-                <input type="file" id="tokenUpload" accept="image/*" style="display:none;" onchange="uploadToken(event)">
-            </div>
-            <div class="sub-section">
-                <span style="font-weight:bold;white-space:nowrap;">狀態：</span>
-                <label class="upload-btn" for="statusUpload" style="background:#3498db;">上傳狀態圖片</label>
-                <input type="file" id="statusUpload" accept="image/*" style="display:none;" onchange="uploadStatus(event)">
-            </div>
+            <button onclick="openModal('modalMap')">地圖</button>
+            <button onclick="openModal('modalToken')" style="background:#27ae60;">棋子</button>
+            <button onclick="openModal('modalStatus')" style="background:#3498db;">狀態</button>
         </div>
     </div>
+
+    <!-- 地圖視窗 -->
+    <div class="modal" id="modalMap">
+        <div class="modal-header"><span>地圖管理庫</span><button class="modal-close" onclick="closeModal('modalMap')">X</button></div>
+        <div class="modal-body">
+            <label class="upload-btn" for="mapUpload" style="background:#e67e22; text-align:center;">上傳新地圖圖片</label>
+            <input type="file" id="mapUpload" accept="image/*" style="display:none;" onchange="uploadMap(event)">
+            <div class="preview-box" id="mapPreviewArea"></div>
+        </div>
+    </div>
+
+    <!-- 棋子視窗 -->
+    <div class="modal" id="modalToken">
+        <div class="modal-header"><span>棋子資源庫</span><button class="modal-close" onclick="closeModal('modalToken')">X</button></div>
+        <div class="modal-body">
+            <label class="upload-btn" for="tokenUpload" style="background:#2ecc71; text-align:center;">上傳新棋子圖片</label>
+            <input type="file" id="tokenUpload" accept="image/*" style="display:none;" onchange="uploadToken(event)">
+            <div class="preview-box" id="tokenPreviewArea"></div>
+        </div>
+    </div>
+
+    <!-- 狀態視窗 -->
+    <div class="modal" id="modalStatus">
+        <div class="modal-header"><span>狀態標記庫</span><button class="modal-close" onclick="closeModal('modalStatus')">X</button></div>
+        <div class="modal-body">
+            <label class="upload-btn" for="statusUpload" style="background:#3498db; text-align:center;">上傳新狀態圖片</label>
+            <input type="file" id="statusUpload" accept="image/*" style="display:none;" onchange="uploadStatus(event)">
+            <div class="preview-box" id="statusPreviewArea"></div>
+        </div>
+    </div>
+
     <div id="ctxMenu"><div class="ctx-item" id="ctxDelBtn" style="color:#ff6b6b;">刪除圖片</div></div>
     <script>
         let scale=1,posX=0,posY=0,isDragging=!1,startX,startY,activeMapItem=null;
@@ -119,6 +138,10 @@
             document.getElementById('btnResetZoom').addEventListener('click', resetZoom);
             window.addEventListener('click',()=>ctxMenu.style.display='none');
         };
+
+        // 彈出視窗控制
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         function initMapControls(){
             function e(e){e.preventDefault();const t=e.deltaY?-e.deltaY:e.wheelDelta;scale=Math.max(0.4,Math.min(6,scale+(t>0?0.1:-0.1))),updateTransform();}
@@ -141,7 +164,6 @@
                 const mapReader=new FileReader();
                 mapReader.onload=function(e){
                     const data=e.target.result;
-                    /* 【核心修改】每次上傳直接覆蓋替換背景，無須手動重設 */
                     mapWrapper.style.backgroundImage=`url('${data}')`;
                     try{localStorage.setItem("trpg_map_bg",data);}catch(err){}
                     
@@ -160,7 +182,6 @@
             }
         }
 
-        /* 修改右鍵選單點擊：若被刪除的小圖剛好是目前的地圖，則清空地圖畫布背景 */
         document.getElementById('ctxDelBtn').onclick=function(){
             if(activeMapItem){
                 ctxMenu.style.display='none';
@@ -175,7 +196,6 @@
         };
         
         function rollDice(e){document.getElementById("diceOutput").innerText=`D${e} 結果 ➔ ${Math.floor(Math.random()*e)+1}`;}
-        document.querySelectorAll('.upload-btn').forEach(e=>{e.addEventListener('mousedown',e=>e.stopPropagation());});
 
         function uploadToken(evt){
             const tokenFiles=evt.target.files;
