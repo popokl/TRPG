@@ -3,36 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="robots" content="noindex, nofollow">
-    <title>🎲 TRPG 祕密跑團室 & 戰術地圖</title>
+    <title>🎲 TRPG 祕密跑團室 & 滿版戰術地圖</title>
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: #fff; padding: 20px; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
-        .control-panel { display: flex; flex-wrap: wrap; gap: 15px; }
-        .box { background: #2a2a2a; padding: 15px; border-radius: 8px; flex: 1; min-width: 280px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        input, select { background: #333; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 4px; }
-        input[type="text"] { width: 120px; }
-        input[type="number"] { width: 60px; }
-        button { background: #4a90e2; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #357abd; }
-        
-        /* 地圖區域樣式 */
-        .map-container { 
-            position: relative; 
+        /* 讓整個視窗填滿，不出現網頁最外層的捲軸 */
+        html, body { 
+            margin: 0; 
+            padding: 0; 
             width: 100%; 
-            max-width: 1000px; 
-            margin: 0 auto; 
-            overflow: auto; 
+            height: 100%; 
+            overflow: hidden; 
+            background: #1a1a1a; 
+            font-family: sans-serif; 
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 上方控制列 */
+        .control-panel { 
+            display: flex; 
+            gap: 15px; 
+            padding: 10px 20px;
+            background: #2a2a2a;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            z-index: 10;
+            align-items: center;
+        }
+        .box { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+        input, select { background: #333; color: #fff; border: 1px solid #555; padding: 5px; border-radius: 4px; }
+        input[type="text"] { width: 90px; }
+        input[type="number"] { width: 50px; }
+        button { background: #4a90e2; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #357abd; }
+        .dice-result { color: #ffcc00; font-weight: bold; margin-left: 5px; }
+        
+        /* 畫面中央的地圖區域：完全不填滿、不出現拉桿 */
+        .map-container { 
+            flex: 1; /* 自動填滿剩餘的所有垂直空間 */
+            position: relative; 
+            width: 100vw; 
+            height: 100%;
             background: #111; 
-            border: 2px solid #444; 
-            border-radius: 8px;
-            height: 600px; /* 固定可視視窗高度 */
+            overflow: hidden; /* 確保絕對沒有拉桿 */
         }
+        
+        /* 地圖本體：畫布大小與容器完全一致 */
         #mapWrapper {
-            position: relative;
-            width: 2500px;  /* 50格 * 50px = 2500px */
-            height: 2500px;
-            background-size: 100% 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: 100% 100%; /* 讓上傳的地圖圖片完美填滿、不變形溢出 */
             background-repeat: no-repeat;
+            background-position: center;
         }
+        
         /* SVG 網格圖層 */
         .grid-layer {
             position: absolute;
@@ -40,82 +66,103 @@
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none; /* 讓滑鼠點擊穿透網格 */
+            pointer-events: none;
         }
-        .dice-result { font-size: 22px; color: #ffcc00; font-weight: bold; margin-top: 10px; }
+        .grid-line {
+            stroke: rgba(255, 255, 255, 0.25); /* 半透明網格線，不遮擋地圖 */
+            stroke-width: 1;
+        }
     </style>
 </head>
 <body>
 
-    <h1>🎲 TRPG 祕密跑團室 & 50x50 戰術地圖</h1>
-
+    <!-- 上方精簡控制列，不佔用垂直空間 -->
     <div class="control-panel">
-        <!-- 角色狀態 -->
         <div class="box">
-            <h3>👤 角色卡 (自動存檔)</h3>
-            姓名：<input type="text" id="charName" oninput="saveData()"> 
-            HP：<input type="number" id="charHP" value="10" oninput="saveData()"> 
-            SAN：<input type="number" id="charSAN" value="50" oninput="saveData()">
+            <span>👤 角色：</span>
+            <input type="text" id="charName" placeholder="名字" oninput="saveData()"> 
+            <span>HP：</span><input type="number" id="charHP" value="10" oninput="saveData()"> 
+            <span>SAN：</span><input type="number" id="charSAN" value="50" oninput="saveData()">
         </div>
 
-        <!-- 地圖控制區 -->
-        <div class="box">
-            <h3>🗺️ 地圖管理員</h3>
-            <label for="mapUpload" style="background:#e67e22; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold;">🖼️ 上傳新地圖圖片</label>
+        <div class="box" style="border-left: 1px solid #555; padding-left: 15px;">
+            <label for="mapUpload" style="background:#e67e22; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:14px;">🖼️ 上傳地圖</label>
             <input type="file" id="mapUpload" accept="image/*" style="display:none;" onchange="uploadMap(event)">
-            <button onclick="clearMap()" style="background:#c0392b; margin-left:10px;">重設空白地圖</button>
+            <button onclick="clearMap()" style="background:#c0392b;">重設</button>
         </div>
 
-        <!-- 骰子 -->
-        <div class="box">
-            <h3>🎲 命運檢定</h3>
+        <div class="box" style="border-left: 1px solid #555; padding-left: 15px;">
             <button onclick="rollDice(100)">D100</button>
             <button onclick="rollDice(20)" style="background:#27ae60;">D20</button>
             <button onclick="rollDice(6)" style="background:#8e44ad;">D6</button>
-            <div class="dice-result" id="diceOutput">--</div>
+            <span class="dice-result" id="diceOutput">--</span>
         </div>
     </div>
 
-    <!-- 畫面中間的 50x50 網格地圖區域 -->
+    <!-- 畫面中央：完美滿版無拉桿地圖 -->
     <div class="map-container">
         <div id="mapWrapper">
-            <!-- 使用 SVG 繪製精準的 50x50 網格 -->
-            <svg class="grid-layer" xmlns="http://w3.org">
-                <defs>
-                    <!-- 定義單個 50x50 像素的網格樣式 -->
-                    <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
-                        <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#555555" stroke-width="1"/>
-                    </pattern>
-                </defs>
-                <!-- 將網格鋪滿整個 2500x2500 的地圖 -->
-                <rect width="100%" height="100%" fill="url(#grid)" />
-            </svg>
+            <!-- 透過 JavaScript 自動動態繪製的 50x50 網格 -->
+            <svg class="grid-layer" id="svgGrid" xmlns="http://w3.org"></svg>
         </div>
     </div>
 
     <script>
-        // 網頁載入時初始化
         window.onload = function() {
-            // 載入角色資料
             if (localStorage.getItem("trpg_name")) document.getElementById("charName").value = localStorage.getItem("trpg_name");
             if (localStorage.getItem("trpg_hp")) document.getElementById("charHP").value = localStorage.getItem("trpg_hp");
             if (localStorage.getItem("trpg_san")) document.getElementById("charSAN").value = localStorage.getItem("trpg_san");
             
-            // 載入上次上傳的地圖
             const savedMap = localStorage.getItem("trpg_map_bg");
             if (savedMap) {
                 document.getElementById("mapWrapper").style.backgroundImage = `url('${savedMap}')`;
             }
+
+            // 建立 50x50 網格
+            draw50x50Grid();
+            // 螢幕大小改變時，重新計算並繪製網格以維持無拉桿
+            window.addEventListener('resize', draw50x50Grid);
         }
 
-        // 自動存檔角色卡
+        // 動態精準繪製 50x50 網格線的函式
+        function draw50x50Grid() {
+            const svg = document.getElementById("svgGrid");
+            svg.innerHTML = ""; // 清空舊格線
+            
+            const width = svg.clientWidth;
+            const height = svg.clientHeight;
+            
+            // 繪製 49 條垂直線，將寬度平分成 50 等分
+            for (let i = 1; i < 50; i++) {
+                const x = (width / 50) * i;
+                const line = document.createElementNS("http://w3.org", "line");
+                line.setAttribute("x1", x); y1 = 0;
+                line.setAttribute("y1", 0);
+                line.setAttribute("x2", x);
+                line.setAttribute("y2", height);
+                line.setAttribute("class", "grid-line");
+                svg.appendChild(line);
+            }
+            
+            // 繪製 49 條水平線，將高度平分成 50 等分
+            for (let i = 1; i < 50; i++) {
+                const y = (height / 50) * i;
+                const line = document.createElementNS("http://w3.org", "line");
+                line.setAttribute("x1", 0);
+                line.setAttribute("y1", y);
+                line.setAttribute("x2", width);
+                line.setAttribute("y2", y);
+                line.setAttribute("class", "grid-line");
+                svg.appendChild(line);
+            }
+        }
+
         function saveData() {
             localStorage.setItem("trpg_name", document.getElementById("charName").value);
             localStorage.setItem("trpg_hp", document.getElementById("charHP").value);
             localStorage.setItem("trpg_san", document.getElementById("charSAN").value);
         }
 
-        // 核心功能：上傳與更新地圖
         function uploadMap(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -123,29 +170,25 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 const imgData = e.target.result;
-                // 1. 立即將圖片套用為地圖背景
                 document.getElementById("mapWrapper").style.backgroundImage = `url('${imgData}')`;
-                // 2. 存入瀏覽器紀錄，下次重開網頁免重新上傳
                 try {
                     localStorage.setItem("trpg_map_bg", imgData);
                 } catch (error) {
-                    alert("圖片檔案過大，雖然能顯示，但下次重開可能需要重新上傳。建議使用 1MB 以下的圖片！");
+                    alert("圖片較大，已成功顯示！但下次重開可能需要重新上傳。建議圖檔壓在 1MB 以內。");
                 }
             };
             reader.readAsDataURL(file);
         }
 
-        // 清除地圖變回空白
         function clearMap() {
             document.getElementById("mapWrapper").style.backgroundImage = "none";
             localStorage.removeItem("trpg_map_bg");
             document.getElementById("mapUpload").value = "";
         }
 
-        // 擲骰功能
         function rollDice(sides) {
             const result = Math.floor(Math.random() * sides) + 1;
-            document.getElementById("diceOutput").innerText = `🎲 D${sides} 結果： ${result}`;
+            document.getElementById("diceOutput").innerText = `D${sides}➔${result}`;
         }
     </script>
 </body>
