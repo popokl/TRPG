@@ -144,31 +144,37 @@
 
         // 核心功能：滑鼠縮放與拖曳平移
         function initMapControls() {
-            // 1. 滾輪放大縮小
-            mapContainer.addEventListener('wheel', function(e) {
-                e.preventDefault(); // 阻止瀏覽器預設的網頁縮放
+            // 【核心修正】高相容性滾輪事件處理器
+            function handleZoom(e) {
+                e.preventDefault(); // 阻止頁面滾動
                 
+                // 相容不同瀏覽器的滾輪方向判定變數 (wheelDelta 或 deltaY)
+                const delta = e.deltaY ? -e.deltaY : e.wheelDelta;
                 const zoomSpeed = 0.1;
-                if (e.deltaY < 0) {
-                    scale += zoomSpeed; // 向上滾輪 = 放大
+
+                if (delta > 0) {
+                    scale += zoomSpeed; // 放大
                 } else {
-                    scale -= zoomSpeed; // 向下滾輪 = 縮小
+                    scale -= zoomSpeed; // 縮小
                 }
                 
-                // 限制縮放範圍：最小 0.5 倍，最大 5 倍
-                scale = Math.max(0.5, Math.min(5, scale));
+                // 限制縮放範圍：最小 0.4 倍，最大 6 倍
+                scale = Math.max(0.4, Math.min(6, scale));
                 updateTransform();
-            }, { passive: false });
+            }
 
-            // 2. 滑鼠按下（開始拖曳）
+            // 同時監聽新版(wheel)與舊版(mousewheel)事件，強制關閉 passive 屬性以允許阻擋預設滾動
+            mapContainer.addEventListener('wheel', handleZoom, { passive: false });
+            mapContainer.addEventListener('mousewheel', handleZoom, { passive: false });
+
+            // 滑鼠按下（開始拖曳）
             mapContainer.addEventListener('mousedown', function(e) {
-                // 允許滑鼠左鍵或中鍵進行拖曳
                 isDragging = true;
                 startX = e.clientX - posX;
                 startY = e.clientY - posY;
             });
 
-            // 3. 滑鼠移動（平移地圖）
+            // 滑鼠移動（平移地圖）
             window.addEventListener('mousemove', function(e) {
                 if (!isDragging) return;
                 posX = e.clientX - startX;
@@ -176,7 +182,7 @@
                 updateTransform();
             });
 
-            // 4. 滑鼠放開（結束拖曳）
+            // 滑鼠放開（結束拖曳）
             window.addEventListener('mouseup', function() {
                 isDragging = false;
             });
@@ -195,7 +201,6 @@
             updateTransform();
         }
 
-        // 以下為原本的功能函數
         function saveData() {
             localStorage.setItem("trpg_name", document.getElementById("charName").value);
             localStorage.setItem("trpg_hp", document.getElementById("charHP").value);
@@ -203,7 +208,7 @@
         }
 
         function uploadMap(event) {
-            const file = event.target.files[0]; 
+            const file = event.target.files[0]; // 精確抓取單一檔案
             if (!file) return;
 
             const reader = new FileReader();
