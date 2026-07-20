@@ -65,10 +65,10 @@
                 <svg class="grid-layer" viewBox="0 0 500 500" xmlns="http://w3.org">
                     <defs>
                         <pattern id="trpg-grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                            <path d="M 10 0 L 0 0 L 0 10" fill="none" stroke="rgba(0,0,0,0.65)" stroke-width="1.2"/>
+                            <path d="M 10 0 L 0 0 L 0 10" fill="none" stroke="rgba(0, 0, 0, 0.65)" stroke-width="1.2"/>
                         </pattern>
                     </defs>
-                    <rect width="500" height="500" fill="url(#trpg-grid)" stroke="rgba(0,0,0,0.65)" stroke-width="1.2" />
+                    <rect width="500" height="500" fill="url(#trpg-grid)" stroke="rgba(0, 0, 0, 0.65)" stroke-width="1.2" />
                 </svg>
             </div>
         </div>
@@ -133,12 +133,24 @@
                     const data=e.target.result;
                     mapWrapper.style.backgroundImage=`url('${data}')`;
                     try{localStorage.setItem("trpg_map_bg",data);}catch(e){}
+                    
                     const box=document.createElement('div');
-                    box.className='p-map-item',box.style.backgroundImage=`url('${data}')`;
+                    box.className='p-map-item';
+                    box.style.backgroundImage=`url('${data}')`;
                     box.onclick=function(){mapWrapper.style.backgroundImage=`url('${data}')`;};
-                    box.oncontextmenu=function(e){e.preventDefault();e.stopPropagation();activeMapItem=box;ctxMenu.style.left=`${e.clientX}px`;ctxMenu.style.top=`${e.clientY}px`;ctxMenu.style.display='block';};
+                    
+                    /* 【核心修正】確實在此將右鍵選單事件綁定至新生成的預覽圖片上 */
+                    box.oncontextmenu=function(clickEvt){
+                        clickEvt.preventDefault();
+                        clickEvt.stopPropagation();
+                        activeMapItem=box;
+                        ctxMenu.style.left=`${clickEvt.clientX}px`;
+                        ctxMenu.style.top=`${clickEvt.clientY}px`;
+                        ctxMenu.style.display='block';
+                    };
                     document.getElementById('mapPreviewArea').appendChild(box);
-                },n.readAsDataURL(t);
+                };
+                n.readAsDataURL(t[0]);
             }
         }
 
@@ -156,7 +168,8 @@
                     box.className=`p-token-item p-${type}-item`,box.style.backgroundImage=`url('${data}')`;
                     box.onclick=function(){spawnToken(data,type==='player'?'player-token':'enemy-token');};
                     document.getElementById('tokenPreviewArea').appendChild(box),evt.target.value="";
-                },n.readAsDataURL(t);
+                };
+                n.readAsDataURL(t[0]);
             }
         }
 
