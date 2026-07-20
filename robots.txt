@@ -1,2 +1,2 @@
-textUser-agent: *
+User-agent: *
 Disallow: /
