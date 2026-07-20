@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow"> <!-- 阻擋搜尋 -->
+    <title>🎲 TRPG 祕密跑團室</title>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: #fff; padding: 20px; max-width: 600px; margin: 0 auto; }
+        .box { background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        input { background: #333; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 4px; width: 80px; }
+        input[type="text"] { width: 150px; }
+        button { background: #4a90e2; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #357abd; }
+        .dice-result { font-size: 24px; color: #ffcc00; font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>🎲 TRPG 祕密跑團房間</h1>
+    <p style="color: #aaa;">此網頁具備本機自動存檔功能，關閉瀏覽器下次進來紀錄還在。</p>
+
+    <!-- 角色卡區塊 -->
+    <div class="box">
+        <h2>👤 角色狀態卡 (自動存檔)</h2>
+        <p>角色姓名：<input type="text" id="charName" placeholder="請輸入名字" oninput="saveData()"></p>
+        <p>目前血量 (HP)：<input type="number" id="charHP" value="10" oninput="saveData()"></p>
+        <p>理智值 (SAN)：<input type="number" id="charSAN" value="50" oninput="saveData()"></p>
+    </div>
+
+    <!-- 骰子區塊 -->
+    <div class="box">
+        <h2>🎲 命運骰值 (D100)</h2>
+        <button onclick="rollD100()">進行 D100 檢定</button>
+        <div class="dice-result" id="diceOutput">--</div>
+    </div>
+
+    <script>
+        // 網頁載入時，自動讀取以前存過的紀錄
+        window.onload = function() {
+            if (localStorage.getItem("trpg_name")) document.getElementById("charName").value = localStorage.getItem("trpg_name");
+            if (localStorage.getItem("trpg_hp")) document.getElementById("charHP").value = localStorage.getItem("trpg_hp");
+            if (localStorage.getItem("trpg_san")) document.getElementById("charSAN").value = localStorage.getItem("trpg_san");
+        }
+
+        // 當輸入框內容改變時，自動存入玩家的瀏覽器
+        function saveData() {
+            localStorage.setItem("trpg_name", document.getElementById("charName").value);
+            localStorage.setItem("trpg_hp", document.getElementById("charHP").value);
+            localStorage.setItem("trpg_san", document.getElementById("charSAN").value);
+        }
+
+        // 擲骰子功能
+        function rollD100() {
+            const result = Math.floor(Math.random() * 100) + 1;
+            document.getElementById("diceOutput").innerText = "🎲 擲出點數： " + result;
+        }
+    </script>
+</body>
+</html>
