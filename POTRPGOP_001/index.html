@@ -11,7 +11,7 @@
             width: 100%; 
             height: 100%; 
             overflow: hidden; 
-            background: #111111; 
+            background: #555555; /* 【核心修正】網頁最底層背景改為經典灰色 */
             font-family: sans-serif; 
             color: #fff;
             display: flex;
@@ -36,7 +36,7 @@
         button:hover { background: #357abd; }
         .dice-result { color: #ffcc00; font-weight: bold; margin-left: 5px; }
         
-        /* 地圖視窗容器：禁止溢出，滑鼠指針變成可抓取狀態 */
+        /* 地圖視窗容器：此處背景也調整為深灰色，維持視覺一體感 */
         .map-container { 
             flex: 1; 
             position: relative; 
@@ -45,7 +45,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background: #151515; 
+            background: #444444; /* 【修正】視窗空隙背景改為深灰色 */
             cursor: grab;
             user-select: none;
         }
@@ -53,18 +53,18 @@
             cursor: grabbing;
         }
         
-        /* 地圖本體：初始大小鎖定為正方形，縮放由 JS transform 控制 */
+        /* 地圖本體 */
         #mapWrapper {
             position: absolute;
             width: min(calc(100vw - 40px), calc(100vh - 120px));
             height: min(calc(100vw - 40px), calc(100vh - 120px));
-            background-color: #222; 
+            background-color: #dddddd; /* 【修正】未上傳圖片時，地圖畫布預設為淺灰色 */
             background-size: 100% 100%; 
             background-repeat: no-repeat;
             background-position: center;
-            border: 2px solid #555; 
-            box-shadow: 0 0 25px rgba(0,0,0,0.7);
-            transform-origin: center center; /* 以中心點進行縮放 */
+            border: 2px solid #222; 
+            box-shadow: 0 0 25px rgba(0,0,0,0.5);
+            transform-origin: center center;
             will-change: transform;
         }
         
@@ -109,7 +109,8 @@
             <svg class="grid-layer" viewBox="0 0 500 500" xmlns="http://w3.org">
                 <defs>
                     <pattern id="trpg-grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                        <path d="M 10 0 L 0 0 L 0 10" fill="none" stroke="rgba(255, 255, 255, 0.25)" stroke-width="0.3"/>
+                        <!-- 【核心修正】將 stroke 屬性改為半透明黑色 rgba(0, 0, 0, 0.4) 確保上傳地圖後也能看清黑線 -->
+                        <path d="M 10 0 L 0 0 L 0 10" fill="none" stroke="rgba(0, 0, 0, 0.4)" stroke-width="0.4"/>
                     </pattern>
                 </defs>
                 <rect width="500" height="500" fill="url(#trpg-grid)" />
@@ -118,7 +119,6 @@
     </div>
 
     <script>
-        // 縮放與平移變數
         let scale = 1;
         let posX = 0;
         let posY = 0;
@@ -138,43 +138,34 @@
                 mapWrapper.style.backgroundImage = `url('${savedMap}')`;
             }
 
-            // 初始化監聽事件
             initMapControls();
         }
 
-        // 核心功能：滑鼠縮放與拖曳平移
         function initMapControls() {
-            // 【核心修正】高相容性滾輪事件處理器
             function handleZoom(e) {
-                e.preventDefault(); // 阻止頁面滾動
-                
-                // 相容不同瀏覽器的滾輪方向判定變數 (wheelDelta 或 deltaY)
+                e.preventDefault();
                 const delta = e.deltaY ? -e.deltaY : e.wheelDelta;
                 const zoomSpeed = 0.1;
 
                 if (delta > 0) {
-                    scale += zoomSpeed; // 放大
+                    scale += zoomSpeed;
                 } else {
-                    scale -= zoomSpeed; // 縮小
+                    scale -= zoomSpeed;
                 }
                 
-                // 限制縮放範圍：最小 0.4 倍，最大 6 倍
                 scale = Math.max(0.4, Math.min(6, scale));
                 updateTransform();
             }
 
-            // 同時監聽新版(wheel)與舊版(mousewheel)事件，強制關閉 passive 屬性以允許阻擋預設滾動
             mapContainer.addEventListener('wheel', handleZoom, { passive: false });
             mapContainer.addEventListener('mousewheel', handleZoom, { passive: false });
 
-            // 滑鼠按下（開始拖曳）
             mapContainer.addEventListener('mousedown', function(e) {
                 isDragging = true;
                 startX = e.clientX - posX;
                 startY = e.clientY - posY;
             });
 
-            // 滑鼠移動（平移地圖）
             window.addEventListener('mousemove', function(e) {
                 if (!isDragging) return;
                 posX = e.clientX - startX;
@@ -182,18 +173,15 @@
                 updateTransform();
             });
 
-            // 滑鼠放開（結束拖曳）
             window.addEventListener('mouseup', function() {
                 isDragging = false;
             });
         }
 
-        // 更新地圖的 CSS 變形樣式
         function updateTransform() {
             mapWrapper.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
         }
 
-        // 復原按鈕：回到最初的大小與中心點
         function resetZoom() {
             scale = 1;
             posX = 0;
@@ -208,7 +196,7 @@
         }
 
         function uploadMap(event) {
-            const file = event.target.files[0]; // 精確抓取單一檔案
+            const file = event.target.files[0]; 
             if (!file) return;
 
             const reader = new FileReader();
