@@ -21,25 +21,35 @@
         .enemy-token { border:3px solid #e74c3c; }
         .sub-section { display:flex; align-items:center; gap:8px; border-right:1px solid #444; padding-right:15px; }
         .sub-section:last-child { border-right:none; }
-        .bottom-float { position:absolute; bottom:0; left:0; width:100vw; z-index:100; display:flex; flex-direction:column; align-items:center; transform:translateY(calc(100% - 24px)); transition:transform 0.25s ease; }
+        
+        /* 【核心修正】浮動式工具列：範圍置中且縮小 */
+        .bottom-float { position:absolute; bottom:0; left:50%; transform:translate(-50%, calc(100% - 24px)); z-index:100; display:flex; flex-direction:column; align-items:center; transition:transform 0.25s ease; width:auto; max-width:90vw; }
         .arrow-trigger { background:#2a2a2a; color:#fff; padding:2px 20px; font-size:14px; font-weight:bold; border-radius:6px 6px 0 0; cursor:pointer; width:auto; text-align:center; }
-        .bottom-bar { width:100%; height:45px; overflow:hidden; }
-        .bottom-float:hover { transform:translateY(0); }
+        .bottom-bar { height:45px; overflow:hidden; border-radius:6px 6px 0 0; border:1px solid #444; border-bottom:none; justify-content:center; }
+        .bottom-float:hover { transform:translate(-50%, 0); }
         .bottom-float:hover .arrow-trigger { opacity:0; pointer-events:none; }
         .bottom-float:hover .bottom-bar { overflow-x:auto; }
+        
+        /* 預覽區樣式 */
         .preview-title { margin:10px 0 5px 0; border-bottom:1px solid #444; padding-bottom:3px; color:#4a90e2; font-size:14px; font-weight:bold; }
         .preview-box { display:flex; flex-wrap:wrap; gap:8px; background:#1a1a1a; padding:8px; border-radius:4px; min-height:40px; box-sizing:border-box; }
         .p-map-item { width:40px; height:40px; border:1px solid #666; cursor:pointer; background-size:cover; background-position:center; border-radius:4px; }
         .p-map-item:hover { border-color:#4a90e2; }
-        /* 合併後的通用預覽棋子樣式 */
         .p-token-item { width:35px; height:35px; border-radius:50%; cursor:pointer; background-size:cover; background-position:center; box-shadow:0 2px 4px rgba(0,0,0,0.3); border:2px solid #aaa; }
         .p-token-item:hover { border-color:#4a90e2; }
         #ctxMenu { position:fixed; display:none; background:#2a2a2a; border:1px solid #555; padding:5px 0; border-radius:4px; box-shadow:0 2px 10px rgba(0,0,0,0.5); z-index:1000; font-size:14px; }
         .ctx-item { padding:6px 20px; cursor:pointer; white-space:nowrap; }
         .ctx-item:hover { background:#4a90e2; }
+
+        /* 【核心修正】網頁右下角獨立的迴圈箭頭按鈕 */
+        .reset-zoom-btn { position:fixed; bottom:20px; right:20px; background:#2a2a2a; color:#fff; border:1px solid #555; width:35px; height:35px; border-radius:50%; font-size:18px; font-weight:bold; cursor:pointer; display:flex; justify-content:center; align-items:center; z-index:101; box-shadow:0 2px 5px rgba(0,0,0,0.3); transition:background 0.2s; }
+        .reset-zoom-btn:hover { background:#4a90e2; border-color:#4a90e2; }
     </style>
 </head>
 <body>
+    <!-- 右下角獨立重設按鈕 -->
+    <button class="reset-zoom-btn" onclick="resetZoom()" title="居中復原">⟳</button>
+
     <div class="bar">
         <span style="font-weight:bold;">擲骰檢定：</span>
         <button onclick="rollDice(100)">D100</button>
@@ -57,7 +67,6 @@
             <div class="sidebar-item"><label>理智值 (SAN)：</label><input type="number" id="charSAN" value="50" oninput="saveData()"></div>
             <div class="preview-title">地圖預覽區</div>
             <div class="preview-box" id="mapPreviewArea"></div>
-            <!-- 合併後的棋子預覽區 -->
             <div class="preview-title">棋子預覽區</div>
             <div class="preview-box" id="tokenPreviewArea"></div>
         </div>
@@ -74,18 +83,16 @@
             </div>
         </div>
     </div>
-    <!-- 下方工具列：精簡合併區 -->
+    <!-- 下方懸浮精簡工具列（已改成地圖、置中縮小） -->
     <div class="bottom-float">
         <div class="arrow-trigger">▲</div>
         <div class="bar bottom-bar">
             <div class="sub-section">
-                <span style="font-weight:bold;white-space:nowrap;">地圖管理：</span>
+                <span style="font-weight:bold;white-space:nowrap;">地圖：</span>
                 <label class="upload-btn" for="mapUpload" style="background:#e67e22;">上傳圖片</label>
                 <input type="file" id="mapUpload" accept="image/*" style="display:none;" onchange="uploadMap(event)">
                 <button onclick="clearMap()" style="background:#c0392b;">重設地圖</button>
-                <button onclick="resetZoom()" style="background:#7f8c8d;">居中復原</button>
             </div>
-            <!-- 合併後的棋子管理區 -->
             <div class="sub-section">
                 <span style="font-weight:bold;white-space:nowrap;">棋子：</span>
                 <label class="upload-btn" for="tokenUpload" style="background:#2ecc71;">上傳棋子圖片</label>
@@ -156,7 +163,6 @@
         function rollDice(e){document.getElementById("diceOutput").innerText=`D${e} 結果 ➔ ${Math.floor(Math.random()*e)+1}`;}
         document.querySelectorAll('.upload-btn').forEach(e=>{e.addEventListener('mousedown',e=>e.stopPropagation());});
 
-        /* 合併後的棋子上傳與召喚邏輯 */
         function uploadToken(evt){
             const t=evt.target.files;
             if(t.length){
@@ -165,7 +171,6 @@
                     const data=e.target.result,box=document.createElement('div');
                     box.className='p-token-item',box.style.backgroundImage=`url('${data}')`;
                     
-                    // 點擊預覽棋子時，詢問要生成哪種陣營
                     box.onclick=function(){
                         const choice = confirm("點擊「確定」召喚為 玩家棋子（綠框）\n點擊「取消」召喚為 敵人棋子（紅框）");
                         if(choice) {
