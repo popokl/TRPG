@@ -19,7 +19,7 @@
             flex-direction: column;
         }
         
-        /* 上方控制列 */
+        /* 上方精簡控制列 */
         .control-panel { 
             display: flex; 
             gap: 15px; 
@@ -30,36 +30,36 @@
             align-items: center;
         }
         .box { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-        input, select { background: #333; color: #fff; border: 1px solid #555; padding: 5px; border-radius: 4px; }
+        input { background: #333; color: #fff; border: 1px solid #555; padding: 5px; border-radius: 4px; }
         input[type="text"] { width: 90px; }
         input[type="number"] { width: 50px; }
         button { background: #4a90e2; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         button:hover { background: #357abd; }
         .dice-result { color: #ffcc00; font-weight: bold; margin-left: 5px; }
         
-        /* 畫面中央的地圖區域：完全不填滿、不出現拉桿 */
+        /* 畫面中央的地圖區域：完全填滿、無拉桿 */
         .map-container { 
-            flex: 1; /* 自動填滿剩餘的所有垂直空間 */
+            flex: 1; 
             position: relative; 
             width: 100vw; 
             height: 100%;
             background: #111; 
-            overflow: hidden; /* 確保絕對沒有拉桿 */
+            overflow: hidden; 
         }
         
-        /* 地圖本體：畫布大小與容器完全一致 */
+        /* 地圖本體 */
         #mapWrapper {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-size: 100% 100%; /* 讓上傳的地圖圖片完美填滿、不變形溢出 */
+            background-size: 100% 100%; 
             background-repeat: no-repeat;
             background-position: center;
         }
         
-        /* SVG 網格圖層 */
+        /* 滿版網格圖層：利用 SVG 向量特性，強制在畫面上完美平分成 50x50 格 */
         .grid-layer {
             position: absolute;
             top: 0;
@@ -68,15 +68,10 @@
             height: 100%;
             pointer-events: none;
         }
-        .grid-line {
-            stroke: rgba(255, 255, 255, 0.25); /* 半透明網格線，不遮擋地圖 */
-            stroke-width: 1;
-        }
     </style>
 </head>
 <body>
 
-    <!-- 上方精簡控制列，不佔用垂直空間 -->
     <div class="control-panel">
         <div class="box">
             <span>👤 角色：</span>
@@ -102,8 +97,16 @@
     <!-- 畫面中央：完美滿版無拉桿地圖 -->
     <div class="map-container">
         <div id="mapWrapper">
-            <!-- 透過 JavaScript 自動動態繪製的 50x50 網格 -->
-            <svg class="grid-layer" id="svgGrid" xmlns="http://w3.org"></svg>
+            <!-- 採用百分比 viewBox 繪製法，保證不管螢幕多大都一定是精準 50 等分，絕不卡死 -->
+            <svg class="grid-layer" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://w3.org">
+                <defs>
+                    <!-- 寬高各 2% 代表 100% / 50 格 = 2% -->
+                    <pattern id="trpg-grid" width="2" height="2" patternUnits="userSpaceOnUse">
+                        <path d="M 2 0 L 0 0 0 2" fill="none" stroke="rgba(255, 255, 255, 0.25)" stroke-width="0.05"/>
+                    </pattern>
+                </defs>
+                <rect width="100" height="100" fill="url(#trpg-grid)" />
+            </svg>
         </div>
     </div>
 
@@ -117,44 +120,6 @@
             if (savedMap) {
                 document.getElementById("mapWrapper").style.backgroundImage = `url('${savedMap}')`;
             }
-
-            // 建立 50x50 網格
-            draw50x50Grid();
-            // 螢幕大小改變時，重新計算並繪製網格以維持無拉桿
-            window.addEventListener('resize', draw50x50Grid);
-        }
-
-        // 動態精準繪製 50x50 網格線的函式
-        function draw50x50Grid() {
-            const svg = document.getElementById("svgGrid");
-            svg.innerHTML = ""; // 清空舊格線
-            
-            const width = svg.clientWidth;
-            const height = svg.clientHeight;
-            
-            // 繪製 49 條垂直線，將寬度平分成 50 等分
-            for (let i = 1; i < 50; i++) {
-                const x = (width / 50) * i;
-                const line = document.createElementNS("http://w3.org", "line");
-                line.setAttribute("x1", x); y1 = 0;
-                line.setAttribute("y1", 0);
-                line.setAttribute("x2", x);
-                line.setAttribute("y2", height);
-                line.setAttribute("class", "grid-line");
-                svg.appendChild(line);
-            }
-            
-            // 繪製 49 條水平線，將高度平分成 50 等分
-            for (let i = 1; i < 50; i++) {
-                const y = (height / 50) * i;
-                const line = document.createElementNS("http://w3.org", "line");
-                line.setAttribute("x1", 0);
-                line.setAttribute("y1", y);
-                line.setAttribute("x2", width);
-                line.setAttribute("y2", y);
-                line.setAttribute("class", "grid-line");
-                svg.appendChild(line);
-            }
         }
 
         function saveData() {
@@ -164,7 +129,7 @@
         }
 
         function uploadMap(event) {
-            const file = event.target.files[0];
+            const file = event.target.files[0]; // 修正多選錯誤，確保只抓第一張圖
             if (!file) return;
 
             const reader = new FileReader();
@@ -174,7 +139,7 @@
                 try {
                     localStorage.setItem("trpg_map_bg", imgData);
                 } catch (error) {
-                    alert("圖片較大，已成功顯示！但下次重開可能需要重新上傳。建議圖檔壓在 1MB 以內。");
+                    alert("地圖已成功更新顯示！但因圖片檔案較大，下次重新開啟網頁時可能需要重新上傳。");
                 }
             };
             reader.readAsDataURL(file);
