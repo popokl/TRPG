@@ -17,17 +17,14 @@
         #mapWrapper { position:absolute; width:min(calc(100vw - 220px),calc(100vh - 100px)); height:min(calc(100vw - 220px),calc(100vh - 100px)); background-color:#dddddd; background-size:100% 100%; background-repeat:no-repeat; background-position:center; border:2px solid #222; box-shadow:0 0 25px rgba(0,0,0,0.5); transform-origin:center center; will-change:transform; }
         .grid-layer { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1; }
         
-        /* 棋子與狀態標記樣式 */
         .token { position:absolute; width:6%; height:6%; border-radius:50%; cursor:move; z-index:2; background-size:cover; background-position:center; box-shadow:0 4px 8px rgba(0,0,0,0.5); top:10px; left:10px; }
         .player-token { border:3px solid #2ecc71; }
         .enemy-token { border:3px solid #e74c3c; }
-        /* 狀態標記特殊樣式（正方形藍框，尺寸略小方便疊加） */
         .status-marker { position:absolute; width:4%; height:4%; border-radius:4px; border:2px solid #3498db; cursor:move; z-index:3; background-size:cover; background-position:center; box-shadow:0 3px 6px rgba(0,0,0,0.5); top:15px; left:15px; }
         
         .sub-section { display:flex; align-items:center; gap:8px; border-right:1px solid #444; padding-right:15px; }
         .sub-section:last-child { border-right:none; }
         
-        /* 浮動式工具列：置中縮小面板 */
         .bottom-float { position:absolute; bottom:0; left:50%; transform:translate(-50%, calc(100% - 24px)); z-index:100; display:flex; flex-direction:column; align-items:center; transition:transform 0.25s ease; width:auto; max-width:90vw; }
         .arrow-trigger { background:#2a2a2a; color:#fff; padding:2px 20px; font-size:14px; font-weight:bold; border-radius:6px 6px 0 0; cursor:pointer; width:auto; text-align:center; }
         .bottom-bar { height:45px; overflow:hidden; border-radius:6px 6px 0 0; border:1px solid #444; border-bottom:none; justify-content:center; }
@@ -35,7 +32,6 @@
         .bottom-float:hover .arrow-trigger { opacity:0; pointer-events:none; }
         .bottom-float:hover .bottom-bar { overflow-x:auto; }
         
-        /* 預覽區樣式 */
         .preview-title { margin:10px 0 5px 0; border-bottom:1px solid #444; padding-bottom:3px; color:#4a90e2; font-size:14px; font-weight:bold; }
         .preview-box { display:flex; flex-wrap:wrap; gap:8px; background:#1a1a1a; padding:8px; border-radius:4px; min-height:40px; box-sizing:border-box; }
         .p-map-item, .p-status-item { width:40px; height:40px; border:1px solid #666; cursor:pointer; background-size:cover; background-position:center; border-radius:4px; }
@@ -70,7 +66,6 @@
             <div class="preview-box" id="mapPreviewArea"></div>
             <div class="preview-title">棋子預覽區</div>
             <div class="preview-box" id="tokenPreviewArea"></div>
-            <!-- 新增左側：狀態預覽區 -->
             <div class="preview-title">狀態預覽區</div>
             <div class="preview-box" id="statusPreviewArea"></div>
         </div>
@@ -101,7 +96,6 @@
                 <label class="upload-btn" for="tokenUpload" style="background:#2ecc71;">上傳棋子圖片</label>
                 <input type="file" id="tokenUpload" accept="image/*" style="display:none;" onchange="uploadToken(event)">
             </div>
-            <!-- 下方新增：狀態管理區塊 -->
             <div class="sub-section">
                 <span style="font-weight:bold;white-space:nowrap;">狀態：</span>
                 <label class="upload-btn" for="statusUpload" style="background:#3498db;">上傳狀態圖片</label>
@@ -122,7 +116,6 @@
             if(s)mapWrapper.style.backgroundImage=`url('${s}')`;
             
             initMapControls();
-            
             document.getElementById('btnResetZoom').addEventListener('click', resetZoom);
             window.addEventListener('click',()=>ctxMenu.style.display='none');
         };
@@ -142,31 +135,28 @@
         function resetZoom(){scale=1,posX=0,posY=0,updateTransform();}
         function saveData(){localStorage.setItem("trpg_name",document.getElementById("charName").value),localStorage.setItem("trpg_hp",document.getElementById("charHP").value),localStorage.setItem("trpg_san",document.getElementById("charSAN").value);}
 
+        // 【安全重構】使用不衝突的變數命名，修復地圖上傳
         function uploadMap(evt){
-            const t=evt.target.files;
-            if(t.length){
-                const n=new FileReader();
-                n.onload=function(e){
+            const mapFiles=evt.target.files;
+            if(mapFiles.length){
+                const mapReader=new FileReader();
+                mapReader.onload=function(e){
                     const data=e.target.result;
                     mapWrapper.style.backgroundImage=`url('${data}')`;
-                    try{localStorage.setItem("trpg_map_bg",data);}catch(e){}
+                    try{localStorage.setItem("trpg_map_bg",data);}catch(err){}
                     
                     const box=document.createElement('div');
                     box.className='p-map-item';
                     box.style.backgroundImage=`url('${data}')`;
                     box.onclick=function(){mapWrapper.style.backgroundImage=`url('${data}')`;};
-                    
                     box.oncontextmenu=function(clickEvt){
-                        clickEvt.preventDefault();
-                        clickEvt.stopPropagation();
+                        clickEvt.preventDefault();clickEvt.stopPropagation();
                         activeMapItem=box;
-                        ctxMenu.style.left=`${clickEvt.clientX}px`;
-                        ctxMenu.style.top=`${clickEvt.clientY}px`;
-                        ctxMenu.style.display='block';
+                        ctxMenu.style.left=`${clickEvt.clientX}px`;ctxMenu.style.top=`${clickEvt.clientY}px`;ctxMenu.style.display='block';
                     };
                     document.getElementById('mapPreviewArea').appendChild(box);
                 };
-                n.readAsDataURL(t[0]);
+                mapReader.readAsDataURL(mapFiles[0]);
             }
         }
 
@@ -175,11 +165,12 @@
         function rollDice(e){document.getElementById("diceOutput").innerText=`D${e} 結果 ➔ ${Math.floor(Math.random()*e)+1}`;}
         document.querySelectorAll('.upload-btn').forEach(e=>{e.addEventListener('mousedown',e=>e.stopPropagation());});
 
+        // 【安全重構】使用不衝突的變數命名，修復棋子上傳
         function uploadToken(evt){
-            const t=evt.target.files;
-            if(t.length){
-                const n=new FileReader();
-                n.onload=function(e){
+            const tokenFiles=evt.target.files;
+            if(tokenFiles.length){
+                const tokenReader=new FileReader();
+                tokenReader.onload=function(e){
                     const data=e.target.result,box=document.createElement('div');
                     box.className='p-token-item',box.style.backgroundImage=`url('${data}')`;
                     box.onclick=function(){
@@ -188,7 +179,7 @@
                     };
                     document.getElementById('tokenPreviewArea').appendChild(box),evt.target.value="";
                 };
-                n.readAsDataURL(t[0]);
+                tokenReader.readAsDataURL(tokenFiles[0]);
             }
         }
 
@@ -202,20 +193,18 @@
             mapWrapper.appendChild(n);
         }
 
-        /* 新增：狀態標記的上傳與生成邏輯 */
+        // 【安全重構】使用不衝突的變數命名，修復狀態上傳
         function uploadStatus(evt){
-            const t=evt.target.files;
-            if(t.length){
-                const n=new FileReader();
-                n.onload=function(e){
+            const statusFiles=evt.target.files;
+            if(statusFiles.length){
+                const statusReader=new FileReader();
+                statusReader.onload=function(e){
                     const data=e.target.result,box=document.createElement('div');
                     box.className='p-status-item',box.style.backgroundImage=`url('${data}')`;
-                    
-                    // 點擊左側狀態預覽，在中央召喚狀態標記
                     box.onclick=function(){ spawnStatusMarker(data); };
                     document.getElementById('statusPreviewArea').appendChild(box),evt.target.value="";
                 };
-                n.readAsDataURL(t[0]);
+                statusReader.readAsDataURL(statusFiles[0]);
             }
         }
 
