@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="robots" content="noindex, nofollow">
-    <title>🎲 TRPG 祕密跑團室 & 完美正方形地圖</title>
+    <title>🎲 TRPG 祕密跑團室 & 可縮放戰術地圖</title>
     <style>
-        /* 讓整個視窗填滿，不出現網頁最外層的捲軸 */
         html, body { 
             margin: 0; 
             padding: 0; 
             width: 100%; 
             height: 100%; 
             overflow: hidden; 
-            background: #111111; /* 網頁背景調深，凸顯地圖 */
+            background: #111111; 
             font-family: sans-serif; 
             color: #fff;
             display: flex;
@@ -37,7 +36,7 @@
         button:hover { background: #357abd; }
         .dice-result { color: #ffcc00; font-weight: bold; margin-left: 5px; }
         
-        /* 畫面中央的地圖外框：負責把地圖頂在畫面中央，四周留白 */
+        /* 地圖視窗容器：禁止溢出，滑鼠指針變成可抓取狀態 */
         .map-container { 
             flex: 1; 
             position: relative; 
@@ -46,25 +45,29 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px; /* 確保網格絕對不會貼到網頁邊緣 */
-            box-sizing: border-box;
+            background: #151515; 
+            cursor: grab;
+            user-select: none;
+        }
+        .map-container:active {
+            cursor: grabbing;
         }
         
-        /* 【核心修正】地圖本體：利用動態計算，永遠強迫它是完美的 1:1 正方形 */
+        /* 地圖本體：初始大小鎖定為正方形，縮放由 JS transform 控制 */
         #mapWrapper {
-            position: relative;
-            /* 寬與高都取「視窗寬度-留白」與「視窗可用高度-留白」之間的最小值，確保不變形 */
+            position: absolute;
             width: min(calc(100vw - 40px), calc(100vh - 120px));
             height: min(calc(100vw - 40px), calc(100vh - 120px));
-            background-color: #222; /* 未上傳圖片時的畫布顏色 */
+            background-color: #222; 
             background-size: 100% 100%; 
             background-repeat: no-repeat;
             background-position: center;
-            border: 2px solid #555; /* 給地圖一個明確的邊框線 */
+            border: 2px solid #555; 
             box-shadow: 0 0 25px rgba(0,0,0,0.7);
+            transform-origin: center center; /* 以中心點進行縮放 */
+            will-change: transform;
         }
         
-        /* 滿版網格圖層 */
         .grid-layer {
             position: absolute;
             top: 0;
@@ -89,6 +92,7 @@
             <label for="mapUpload" style="background:#e67e22; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:14px;">🖼️ 上傳地圖</label>
             <input type="file" id="mapUpload" accept="image/*" style="display:none;" onchange="uploadMap(event)">
             <button onclick="clearMap()" style="background:#c0392b;">重設</button>
+            <button onclick="resetZoom()" style="background:#7f8c8d;">居中復原</button>
         </div>
 
         <div class="box" style="border-left: 1px solid #555; padding-left: 15px;">
@@ -99,13 +103,11 @@
         </div>
     </div>
 
-    <!-- 畫面中央：地圖區域（四周帶有留白保護） -->
-    <div class="map-container">
+    <!-- 地圖視窗 -->
+    <div class="map-container" id="mapContainer">
         <div id="mapWrapper">
-            <!-- 採用 500x500 的絕對座標系統，每格 10x10，這樣網格線在縮放時絕對不會因為小數點而變形 -->
             <svg class="grid-layer" viewBox="0 0 500 500" xmlns="http://w3.org">
                 <defs>
-                    <!-- 500 總長 / 50 格 = 每格剛好 10 單位 -->
                     <pattern id="trpg-grid" width="10" height="10" patternUnits="userSpaceOnUse">
                         <path d="M 10 0 L 0 0 L 0 10" fill="none" stroke="rgba(255, 255, 255, 0.25)" stroke-width="0.3"/>
                     </pattern>
@@ -116,6 +118,16 @@
     </div>
 
     <script>
+        // 縮放與平移變數
+        let scale = 1;
+        let posX = 0;
+        let posY = 0;
+        let isDragging = false;
+        let startX, startY;
+
+        const mapContainer = document.getElementById('mapContainer');
+        const mapWrapper = document.getElementById('mapWrapper');
+
         window.onload = function() {
             if (localStorage.getItem("trpg_name")) document.getElementById("charName").value = localStorage.getItem("trpg_name");
             if (localStorage.getItem("trpg_hp")) document.getElementById("charHP").value = localStorage.getItem("trpg_hp");
@@ -123,10 +135,67 @@
             
             const savedMap = localStorage.getItem("trpg_map_bg");
             if (savedMap) {
-                document.getElementById("mapWrapper").style.backgroundImage = `url('${savedMap}')`;
+                mapWrapper.style.backgroundImage = `url('${savedMap}')`;
             }
+
+            // 初始化監聽事件
+            initMapControls();
         }
 
+        // 核心功能：滑鼠縮放與拖曳平移
+        function initMapControls() {
+            // 1. 滾輪放大縮小
+            mapContainer.addEventListener('wheel', function(e) {
+                e.preventDefault(); // 阻止瀏覽器預設的網頁縮放
+                
+                const zoomSpeed = 0.1;
+                if (e.deltaY < 0) {
+                    scale += zoomSpeed; // 向上滾輪 = 放大
+                } else {
+                    scale -= zoomSpeed; // 向下滾輪 = 縮小
+                }
+                
+                // 限制縮放範圍：最小 0.5 倍，最大 5 倍
+                scale = Math.max(0.5, Math.min(5, scale));
+                updateTransform();
+            }, { passive: false });
+
+            // 2. 滑鼠按下（開始拖曳）
+            mapContainer.addEventListener('mousedown', function(e) {
+                // 允許滑鼠左鍵或中鍵進行拖曳
+                isDragging = true;
+                startX = e.clientX - posX;
+                startY = e.clientY - posY;
+            });
+
+            // 3. 滑鼠移動（平移地圖）
+            window.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                posX = e.clientX - startX;
+                posY = e.clientY - startY;
+                updateTransform();
+            });
+
+            // 4. 滑鼠放開（結束拖曳）
+            window.addEventListener('mouseup', function() {
+                isDragging = false;
+            });
+        }
+
+        // 更新地圖的 CSS 變形樣式
+        function updateTransform() {
+            mapWrapper.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
+        }
+
+        // 復原按鈕：回到最初的大小與中心點
+        function resetZoom() {
+            scale = 1;
+            posX = 0;
+            posY = 0;
+            updateTransform();
+        }
+
+        // 以下為原本的功能函數
         function saveData() {
             localStorage.setItem("trpg_name", document.getElementById("charName").value);
             localStorage.setItem("trpg_hp", document.getElementById("charHP").value);
@@ -134,13 +203,13 @@
         }
 
         function uploadMap(event) {
-            const file = event.target.files[0]; // 精確修正為只抓取陣列第一項
+            const file = event.target.files[0]; 
             if (!file) return;
 
             const reader = new FileReader();
             reader.onload = function(e) {
                 const imgData = e.target.result;
-                document.getElementById("mapWrapper").style.backgroundImage = `url('${imgData}')`;
+                mapWrapper.style.backgroundImage = `url('${imgData}')`;
                 try {
                     localStorage.setItem("trpg_map_bg", imgData);
                 } catch (error) {
@@ -151,7 +220,7 @@
         }
 
         function clearMap() {
-            document.getElementById("mapWrapper").style.backgroundImage = "none";
+            mapWrapper.style.backgroundImage = "none";
             localStorage.removeItem("trpg_map_bg");
             document.getElementById("mapUpload").value = "";
         }
