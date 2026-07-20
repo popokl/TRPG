@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="robots" content="noindex, nofollow">
-    <title>🎲 TRPG 祕密跑團室 & 滿版戰術地圖</title>
+    <title>🎲 TRPG 祕密跑團室 & 正方形戰術地圖</title>
     <style>
         /* 讓整個視窗填滿，不出現網頁最外層的捲軸 */
         html, body { 
@@ -37,26 +37,28 @@
         button:hover { background: #357abd; }
         .dice-result { color: #ffcc00; font-weight: bold; margin-left: 5px; }
         
-        /* 畫面中央的地圖區域：完全填滿、無拉桿 */
+        /* 畫面中央的地圖容器：利用 Flexbox 讓內部內容居中 */
         .map-container { 
             flex: 1; 
             position: relative; 
             width: 100vw; 
-            height: 100%;
             background: #111; 
             overflow: hidden; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         
-        /* 地圖本體 */
+        /* 【關鍵修正】地圖本體：鎖定 1:1 比例，寬高皆取用不溢出的最大長度 */
         #mapWrapper {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            position: relative;
+            width: min(100vw, 100% - 20px);
+            height: min(100vw, 100% - 20px);
+            aspect-ratio: 1 / 1; /* 強制維持 1:1 絕對正方形 */
             background-size: 100% 100%; 
             background-repeat: no-repeat;
             background-position: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
         }
         
         /* 滿版網格圖層 */
@@ -97,11 +99,10 @@
     <!-- 畫面中央：完美滿版無拉桿地圖 -->
     <div class="map-container">
         <div id="mapWrapper">
-            <!-- 採用 100x100 的 viewBox，每格寬高 2 單位代表 100/50 = 2 格 -->
-            <svg class="grid-layer" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://w3.org">
+            <!-- 採用 100x100 的 viewBox，並且移除 preserveAspectRatio="none"，以確保完美的幾何比例 -->
+            <svg class="grid-layer" viewBox="0 0 100 100" xmlns="http://w3.org">
                 <defs>
                     <pattern id="trpg-grid" width="2" height="2" patternUnits="userSpaceOnUse">
-                        <!-- 使用 M 0 0 繪製 L 型線條，達成交叉網格 -->
                         <path d="M 2 0 L 0 0 L 0 2" fill="none" stroke="rgba(255, 255, 255, 0.3)" stroke-width="0.05"/>
                     </pattern>
                 </defs>
@@ -129,7 +130,6 @@
         }
 
         function uploadMap(event) {
-            // 【核心修正】精準獲取上傳的第一張圖片物件
             const file = event.target.files[0]; 
             if (!file) return;
 
