@@ -2,57 +2,150 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="robots" content="noindex, nofollow"> <!-- 阻擋搜尋 -->
-    <title>🎲 TRPG 祕密跑團室</title>
+    <meta name="robots" content="noindex, nofollow">
+    <title>🎲 TRPG 祕密跑團室 & 戰術地圖</title>
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: #fff; padding: 20px; max-width: 600px; margin: 0 auto; }
-        .box { background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        input { background: #333; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 4px; width: 80px; }
-        input[type="text"] { width: 150px; }
+        body { font-family: sans-serif; background: #1a1a1a; color: #fff; padding: 20px; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+        .control-panel { display: flex; flex-wrap: wrap; gap: 15px; }
+        .box { background: #2a2a2a; padding: 15px; border-radius: 8px; flex: 1; min-width: 280px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        input, select { background: #333; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 4px; }
+        input[type="text"] { width: 120px; }
+        input[type="number"] { width: 60px; }
         button { background: #4a90e2; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         button:hover { background: #357abd; }
-        .dice-result { font-size: 24px; color: #ffcc00; font-weight: bold; margin-top: 10px; }
+        
+        /* 地圖區域樣式 */
+        .map-container { 
+            position: relative; 
+            width: 100%; 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            overflow: auto; 
+            background: #111; 
+            border: 2px solid #444; 
+            border-radius: 8px;
+            height: 600px; /* 固定可視視窗高度 */
+        }
+        #mapWrapper {
+            position: relative;
+            width: 2500px;  /* 50格 * 50px = 2500px */
+            height: 2500px;
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+        }
+        /* SVG 網格圖層 */
+        .grid-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* 讓滑鼠點擊穿透網格 */
+        }
+        .dice-result { font-size: 22px; color: #ffcc00; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <h1>🎲 TRPG 祕密跑團房間</h1>
-    <p style="color: #aaa;">此網頁具備本機自動存檔功能，關閉瀏覽器下次進來紀錄還在。</p>
+    <h1>🎲 TRPG 祕密跑團室 & 50x50 戰術地圖</h1>
 
-    <!-- 角色卡區塊 -->
-    <div class="box">
-        <h2>👤 角色狀態卡 (自動存檔)</h2>
-        <p>角色姓名：<input type="text" id="charName" placeholder="請輸入名字" oninput="saveData()"></p>
-        <p>目前血量 (HP)：<input type="number" id="charHP" value="10" oninput="saveData()"></p>
-        <p>理智值 (SAN)：<input type="number" id="charSAN" value="50" oninput="saveData()"></p>
+    <div class="control-panel">
+        <!-- 角色狀態 -->
+        <div class="box">
+            <h3>👤 角色卡 (自動存檔)</h3>
+            姓名：<input type="text" id="charName" oninput="saveData()"> 
+            HP：<input type="number" id="charHP" value="10" oninput="saveData()"> 
+            SAN：<input type="number" id="charSAN" value="50" oninput="saveData()">
+        </div>
+
+        <!-- 地圖控制區 -->
+        <div class="box">
+            <h3>🗺️ 地圖管理員</h3>
+            <label for="mapUpload" style="background:#e67e22; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold;">🖼️ 上傳新地圖圖片</label>
+            <input type="file" id="mapUpload" accept="image/*" style="display:none;" onchange="uploadMap(event)">
+            <button onclick="clearMap()" style="background:#c0392b; margin-left:10px;">重設空白地圖</button>
+        </div>
+
+        <!-- 骰子 -->
+        <div class="box">
+            <h3>🎲 命運檢定</h3>
+            <button onclick="rollDice(100)">D100</button>
+            <button onclick="rollDice(20)" style="background:#27ae60;">D20</button>
+            <button onclick="rollDice(6)" style="background:#8e44ad;">D6</button>
+            <div class="dice-result" id="diceOutput">--</div>
+        </div>
     </div>
 
-    <!-- 骰子區塊 -->
-    <div class="box">
-        <h2>🎲 命運骰值 (D100)</h2>
-        <button onclick="rollD100()">進行 D100 檢定</button>
-        <div class="dice-result" id="diceOutput">--</div>
+    <!-- 畫面中間的 50x50 網格地圖區域 -->
+    <div class="map-container">
+        <div id="mapWrapper">
+            <!-- 使用 SVG 繪製精準的 50x50 網格 -->
+            <svg class="grid-layer" xmlns="http://w3.org">
+                <defs>
+                    <!-- 定義單個 50x50 像素的網格樣式 -->
+                    <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+                        <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#555555" stroke-width="1"/>
+                    </pattern>
+                </defs>
+                <!-- 將網格鋪滿整個 2500x2500 的地圖 -->
+                <rect width="100%" height="100%" fill="url(#grid)" />
+            </svg>
+        </div>
     </div>
 
     <script>
-        // 網頁載入時，自動讀取以前存過的紀錄
+        // 網頁載入時初始化
         window.onload = function() {
+            // 載入角色資料
             if (localStorage.getItem("trpg_name")) document.getElementById("charName").value = localStorage.getItem("trpg_name");
             if (localStorage.getItem("trpg_hp")) document.getElementById("charHP").value = localStorage.getItem("trpg_hp");
             if (localStorage.getItem("trpg_san")) document.getElementById("charSAN").value = localStorage.getItem("trpg_san");
+            
+            // 載入上次上傳的地圖
+            const savedMap = localStorage.getItem("trpg_map_bg");
+            if (savedMap) {
+                document.getElementById("mapWrapper").style.backgroundImage = `url('${savedMap}')`;
+            }
         }
 
-        // 當輸入框內容改變時，自動存入玩家的瀏覽器
+        // 自動存檔角色卡
         function saveData() {
             localStorage.setItem("trpg_name", document.getElementById("charName").value);
             localStorage.setItem("trpg_hp", document.getElementById("charHP").value);
             localStorage.setItem("trpg_san", document.getElementById("charSAN").value);
         }
 
-        // 擲骰子功能
-        function rollD100() {
-            const result = Math.floor(Math.random() * 100) + 1;
-            document.getElementById("diceOutput").innerText = "🎲 擲出點數： " + result;
+        // 核心功能：上傳與更新地圖
+        function uploadMap(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imgData = e.target.result;
+                // 1. 立即將圖片套用為地圖背景
+                document.getElementById("mapWrapper").style.backgroundImage = `url('${imgData}')`;
+                // 2. 存入瀏覽器紀錄，下次重開網頁免重新上傳
+                try {
+                    localStorage.setItem("trpg_map_bg", imgData);
+                } catch (error) {
+                    alert("圖片檔案過大，雖然能顯示，但下次重開可能需要重新上傳。建議使用 1MB 以下的圖片！");
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 清除地圖變回空白
+        function clearMap() {
+            document.getElementById("mapWrapper").style.backgroundImage = "none";
+            localStorage.removeItem("trpg_map_bg");
+            document.getElementById("mapUpload").value = "";
+        }
+
+        // 擲骰功能
+        function rollDice(sides) {
+            const result = Math.floor(Math.random() * sides) + 1;
+            document.getElementById("diceOutput").innerText = `🎲 D${sides} 結果： ${result}`;
         }
     </script>
 </body>
