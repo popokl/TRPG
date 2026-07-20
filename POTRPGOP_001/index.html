@@ -25,14 +25,12 @@
         .sub-section { display:flex; align-items:center; gap:8px; border-right:1px solid #444; padding-right:15px; }
         .sub-section:last-child { border-right:none; }
         
-        /* 置中浮動快捷列 */
         .bottom-float { position:absolute; bottom:0; left:50%; transform:translate(-50%, calc(100% - 24px)); z-index:100; display:flex; flex-direction:column; align-items:center; transition:transform 0.25s ease; }
         .arrow-trigger { background:#2a2a2a; color:#fff; padding:2px 20px; font-size:14px; font-weight:bold; border-radius:6px 6px 0 0; cursor:pointer; width:auto; text-align:center; }
         .bottom-bar { height:45px; overflow:hidden; border-radius:6px 6px 0 0; border:1px solid #444; border-bottom:none; display:flex; gap:10px; padding:10px 20px; background:#2a2a2a; }
         .bottom-float:hover { transform:translate(-50%, 0); }
         .bottom-float:hover .arrow-trigger { opacity:0; pointer-events:none; }
 
-        /* 【核心修正】下方工具列三個按鍵改為黑框白字 */
         .btn-black-white { background: #1a1a1a; color: #ffffff; border: 1px solid #ffffff; padding: 6px 16px; transition: background 0.2s, color 0.2s; }
         .btn-black-white:hover { background: #ffffff; color: #1a1a1a; }
         
@@ -85,7 +83,6 @@
         </div>
     </div>
 
-    <!-- 下方快捷列：已完全套用黑框白字樣式 -->
     <div class="bottom-float">
         <div class="arrow-trigger">▲</div>
         <div class="bar bottom-bar">
@@ -127,13 +124,25 @@
         let scale=1,posX=0,posY=0,isDragging=!1,startX,startY,activeMapItem=null;
         const mapContainer=document.getElementById('mapContainer'),mapWrapper=document.getElementById('mapWrapper'),ctxMenu=document.getElementById('ctxMenu');
 
+        // 初始化記憶庫陣列
+        let savedMaps = JSON.parse(localStorage.getItem("trpg_map_list")) || [];
+        let savedTokens = JSON.parse(localStorage.getItem("trpg_token_list")) || [];
+        let savedStatuses = JSON.parse(localStorage.getItem("trpg_status_list")) || [];
+
         window.onload=function(){
             if(localStorage.getItem("trpg_name"))document.getElementById("charName").value=localStorage.getItem("trpg_name");
             if(localStorage.getItem("trpg_hp"))document.getElementById("charHP").value=localStorage.getItem("trpg_hp");
             if(localStorage.getItem("trpg_san"))document.getElementById("charSAN").value=localStorage.getItem("trpg_san");
+            
+            // 復原上次選擇的地圖背景
             const s=localStorage.getItem("trpg_map_bg");
             if(s)mapWrapper.style.backgroundImage=`url('${s}')`;
             
+            // 【核心修正】網頁重開時，自動從瀏覽器記憶庫還原所有上傳過的預覽圖
+            savedMaps.forEach(data => renderMapPreview(data));
+            savedTokens.forEach(data => renderTokenPreview(data));
+            savedStatuses.forEach(data => renderStatusPreview(data));
+
             initMapControls();
             document.getElementById('btnResetZoom').addEventListener('click', resetZoom);
             window.addEventListener('click',()=>ctxMenu.style.display='none');
@@ -157,6 +166,7 @@
         function resetZoom(){scale=1,posX=0,posY=0,updateTransform();}
         function saveData(){localStorage.setItem("trpg_name",document.getElementById("charName").value),localStorage.setItem("trpg_hp",document.getElementById("charHP").value),localStorage.setItem("trpg_san",document.getElementById("charSAN").value);}
 
+        // 地圖渲染與快取保存
         function uploadMap(evt){
             const mapFiles=evt.target.files;
             if(mapFiles.length){
@@ -164,59 +174,74 @@
                 mapReader.onload=function(e){
                     const data=e.target.result;
                     mapWrapper.style.backgroundImage=`url('${data}')`;
-                    try{localStorage.setItem("trpg_map_bg",data);}catch(err){}
-                    
-                    const box=document.createElement('div');
-                    box.className='p-map-item';
-                    box.style.backgroundImage=`url('${data}')`;
-                    box.onclick=function(){mapWrapper.style.backgroundImage=`url('${data}')`;};
-                    box.oncontextmenu=function(clickEvt){
-                        clickEvt.preventDefault();clickEvt.stopPropagation();
-                        activeMapItem=box;
-                        ctxMenu.style.left=`${clickEvt.clientX}px`;ctxMenu.style.top=`${clickEvt.clientY}px`;ctxMenu.style.display='block';
-                    };
-                    document.getElementById('mapPreviewArea').appendChild(box);
+                    try{
+                        localStorage.setItem("trpg_map_bg",data);
+                        savedMaps.push(data);
+                        localStorage.setItem("trpg_map_list", JSON.stringify(savedMaps));
+                    }catch(err){alert("圖片容量較大，可即時跑團，但下次重開視窗可能不會自動復原。建議圖檔壓縮至 1MB 以內！");}
+                    renderMapPreview(data);
                 };
-                mapReader.readAsDataURL(mapFiles);
+                mapReader.readAsDataURL(mapFiles[0]);
             }
         }
 
+        function renderMapPreview(data) {
+            const box=document.createElement('div');
+            box.className='p-map-item'; box.style.backgroundImage=`url('${data}')`;
+            box.onclick=function(){mapWrapper.style.backgroundImage=`url('${data}')`; localStorage.setItem("trpg_map_bg",data);};
+            box.oncontextmenu=function(clickEvt){
+                clickEvt.preventDefault();clickEvt.stopPropagation(); activeMapItem=box;
+                ctxMenu.style.left=`${clickEvt.clientX}px`;ctxMenu.style.top=`${clickEvt.clientY}px`;ctxMenu.style.display='block';
+            };
+            document.getElementById('mapPreviewArea').appendChild(box);
+        }
+
+        // 刪除地圖連動快取
         document.getElementById('ctxDelBtn').onclick=function(){
             if(activeMapItem){
                 ctxMenu.style.display='none';
-                const bgUrl = activeMapItem.style.backgroundImage;
-                activeMapItem.remove();
-                activeMapItem=null;
-                if(mapWrapper.style.backgroundImage === bgUrl) {
-                    mapWrapper.style.backgroundImage = "none";
-                    localStorage.removeItem("trpg_map_bg");
+                const bgUrl = activeMapItem.style.backgroundImage.replace(/^url\(['"](.+)['"]\)$/, '$1');
+                savedMaps = savedMaps.filter(url => url !== bgUrl);
+                localStorage.setItem("trpg_map_list", JSON.stringify(savedMaps));
+                activeMapItem.remove(); activeMapItem=null;
+                if(localStorage.getItem("trpg_map_bg") === bgUrl) {
+                    mapWrapper.style.backgroundImage = "none"; localStorage.removeItem("trpg_map_bg");
                 }
             }
         };
         
         function rollDice(e){document.getElementById("diceOutput").innerText=`D${e} 結果 ➔ ${Math.floor(Math.random()*e)+1}`;}
+        document.querySelectorAll('.upload-btn').forEach(e=>{e.addEventListener('mousedown',e=>e.stopPropagation());});
 
-        // 棋子上傳
+        // 棋子渲染與快取保存
         function uploadToken(evt){
             const tokenFiles=evt.target.files;
             if(tokenFiles.length){
                 const tokenReader=new FileReader();
                 tokenReader.onload=function(e){
-                    const data=e.target.result,box=document.createElement('div');
-                    box.className='p-token-item',box.style.backgroundImage=`url('${data}')`;
-                    box.onclick=function(){
-                        const choice = confirm("點擊「確定」召喚為 玩家棋子（綠框）\n點擊「取消」召喚為 敵人棋子（紅框）");
-                        if(choice) { spawnToken(data, 'player-token'); } else { spawnToken(data, 'enemy-token'); }
-                    };
-                    document.getElementById('tokenPreviewArea').appendChild(box),evt.target.value="";
+                    const data=e.target.result;
+                    try {
+                        savedTokens.push(data);
+                        localStorage.setItem("trpg_token_list", JSON.stringify(savedTokens));
+                    } catch(err) {}
+                    renderTokenPreview(data);
                 };
-                tokenReader.readAsDataURL(tokenFiles);
+                tokenReader.readAsDataURL(tokenFiles[0]);
             }
         }
 
+        function renderTokenPreview(data) {
+            const box=document.createElement('div');
+            box.className='p-token-item'; box.style.backgroundImage=`url('${data}')`;
+            box.onclick=function(){
+                const choice = confirm("點擊「確定」召喚為 玩家棋子（綠框）\n點擊「取消」召喚為 敵人棋子（紅框）");
+                if(choice) { spawnToken(data, 'player-token'); } else { spawnToken(data, 'enemy-token'); }
+            };
+            document.getElementById('tokenPreviewArea').appendChild(box);
+        }
+
         function spawnToken(data,cls){
-            const n=document.createElement('div');
-            n.className=`token ${cls}`,n.style.backgroundImage=`url('${data}')`;
+            const n=document.createElement('div'); n.className=`token ${cls}`; n.style.backgroundImage=`url('${data}')`;
             let dragging=!1,tX=0,tY=0;
             n.addEventListener('mousedown',e=>{e.stopPropagation(),dragging=!0,tX=e.clientX-n.offsetLeft,tY=e.clientY-n.offsetTop;});
             window.addEventListener('mousemove',e=>{dragging&&(n.style.left=`${e.clientX-tX}px`,n.style.top=`${e.clientY-tY}px`);});
@@ -224,24 +249,32 @@
             mapWrapper.appendChild(n);
         }
 
-        // 狀態上傳
+        // 狀態標記渲染與快取保存
         function uploadStatus(evt){
             const statusFiles=evt.target.files;
             if(statusFiles.length){
                 const statusReader=new FileReader();
                 statusReader.onload=function(e){
-                    const data=e.target.result,box=document.createElement('div');
-                    box.className='p-status-item',box.style.backgroundImage=`url('${data}')`;
-                    box.onclick=function(){ spawnStatusMarker(data); };
-                    document.getElementById('statusPreviewArea').appendChild(box),evt.target.value="";
+                    const data=e.target.result;
+                    try {
+                        savedStatuses.push(data);
+                        localStorage.setItem("trpg_status_list", JSON.stringify(savedStatuses));
+                    } catch(err) {}
+                    renderStatusPreview(data);
                 };
-                statusReader.readAsDataURL(statusFiles);
+                statusReader.readAsDataURL(statusFiles[0]);
             }
         }
 
+        function renderStatusPreview(data) {
+            const box=document.createElement('div');
+            box.className='p-status-item'; box.style.backgroundImage=`url('${data}')`;
+            box.onclick=function(){ spawnStatusMarker(data); };
+            document.getElementById('statusPreviewArea').appendChild(box);
+        }
+
         function spawnStatusMarker(data){
-            const n=document.createElement('div');
-            n.className='status-marker',n.style.backgroundImage=`url('${data}')`;
+            const n=document.createElement('div'); n.className='status-marker'; n.style.backgroundImage=`url('${data}')`;
             let dragging=!1,tX=0,tY=0;
             n.addEventListener('mousedown',e=>{e.stopPropagation(),dragging=!0,tX=e.clientX-n.offsetLeft,tY=e.clientY-n.offsetTop;});
             window.addEventListener('mousemove',e=>{dragging&&(n.style.left=`${e.clientX-tX}px`,n.style.top=`${e.clientY-tY}px`);});
