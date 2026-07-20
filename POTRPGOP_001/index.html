@@ -16,13 +16,18 @@
         .map-container { flex:1; position:relative; overflow:hidden; display:flex; justify-content:center; align-items:center; background:#444; user-select:none; }
         #mapWrapper { position:absolute; width:min(calc(100vw - 220px),calc(100vh - 100px)); height:min(calc(100vw - 220px),calc(100vh - 100px)); background-color:#dddddd; background-size:100% 100%; background-repeat:no-repeat; background-position:center; border:2px solid #222; box-shadow:0 0 25px rgba(0,0,0,0.5); transform-origin:center center; will-change:transform; }
         .grid-layer { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1; }
+        
+        /* 棋子與狀態標記樣式 */
         .token { position:absolute; width:6%; height:6%; border-radius:50%; cursor:move; z-index:2; background-size:cover; background-position:center; box-shadow:0 4px 8px rgba(0,0,0,0.5); top:10px; left:10px; }
         .player-token { border:3px solid #2ecc71; }
         .enemy-token { border:3px solid #e74c3c; }
+        /* 狀態標記特殊樣式（正方形藍框，尺寸略小方便疊加） */
+        .status-marker { position:absolute; width:4%; height:4%; border-radius:4px; border:2px solid #3498db; cursor:move; z-index:3; background-size:cover; background-position:center; box-shadow:0 3px 6px rgba(0,0,0,0.5); top:15px; left:15px; }
+        
         .sub-section { display:flex; align-items:center; gap:8px; border-right:1px solid #444; padding-right:15px; }
         .sub-section:last-child { border-right:none; }
         
-        /* 浮動式工具列：範圍置中且縮小 */
+        /* 浮動式工具列：置中縮小面板 */
         .bottom-float { position:absolute; bottom:0; left:50%; transform:translate(-50%, calc(100% - 24px)); z-index:100; display:flex; flex-direction:column; align-items:center; transition:transform 0.25s ease; width:auto; max-width:90vw; }
         .arrow-trigger { background:#2a2a2a; color:#fff; padding:2px 20px; font-size:14px; font-weight:bold; border-radius:6px 6px 0 0; cursor:pointer; width:auto; text-align:center; }
         .bottom-bar { height:45px; overflow:hidden; border-radius:6px 6px 0 0; border:1px solid #444; border-bottom:none; justify-content:center; }
@@ -33,23 +38,19 @@
         /* 預覽區樣式 */
         .preview-title { margin:10px 0 5px 0; border-bottom:1px solid #444; padding-bottom:3px; color:#4a90e2; font-size:14px; font-weight:bold; }
         .preview-box { display:flex; flex-wrap:wrap; gap:8px; background:#1a1a1a; padding:8px; border-radius:4px; min-height:40px; box-sizing:border-box; }
-        .p-map-item { width:40px; height:40px; border:1px solid #666; cursor:pointer; background-size:cover; background-position:center; border-radius:4px; }
-        .p-map-item:hover { border-color:#4a90e2; }
+        .p-map-item, .p-status-item { width:40px; height:40px; border:1px solid #666; cursor:pointer; background-size:cover; background-position:center; border-radius:4px; }
+        .p-map-item:hover, .p-status-item:hover { border-color:#4a90e2; }
         .p-token-item { width:35px; height:35px; border-radius:50%; cursor:pointer; background-size:cover; background-position:center; box-shadow:0 2px 4px rgba(0,0,0,0.3); border:2px solid #aaa; }
         .p-token-item:hover { border-color:#4a90e2; }
         #ctxMenu { position:fixed; display:none; background:#2a2a2a; border:1px solid #555; padding:5px 0; border-radius:4px; box-shadow:0 2px 10px rgba(0,0,0,0.5); z-index:1000; font-size:14px; }
         .ctx-item { padding:6px 20px; cursor:pointer; white-space:nowrap; }
         .ctx-item:hover { background:#4a90e2; }
-
-        /* 網頁右下角獨立的迴圈箭頭按鈕 */
         .reset-zoom-btn { position:fixed; bottom:20px; right:20px; background:#2a2a2a; color:#fff; border:1px solid #555; width:35px; height:35px; border-radius:50%; font-size:18px; font-weight:bold; cursor:pointer; display:flex; justify-content:center; align-items:center; z-index:101; box-shadow:0 2px 5px rgba(0,0,0,0.3); transition:background 0.2s; }
         .reset-zoom-btn:hover { background:#4a90e2; border-color:#4a90e2; }
     </style>
 </head>
 <body>
-    <!-- 右下角獨立重設按鈕（安全移除內聯 onclick，交由 JS 安全綁定） -->
     <button class="reset-zoom-btn" id="btnResetZoom" title="居中復原">⟳</button>
-
     <div class="bar">
         <span style="font-weight:bold;">擲骰檢定：</span>
         <button onclick="rollDice(100)">D100</button>
@@ -69,6 +70,9 @@
             <div class="preview-box" id="mapPreviewArea"></div>
             <div class="preview-title">棋子預覽區</div>
             <div class="preview-box" id="tokenPreviewArea"></div>
+            <!-- 新增左側：狀態預覽區 -->
+            <div class="preview-title">狀態預覽區</div>
+            <div class="preview-box" id="statusPreviewArea"></div>
         </div>
         <div class="map-container" id="mapContainer">
             <div id="mapWrapper">
@@ -97,6 +101,12 @@
                 <label class="upload-btn" for="tokenUpload" style="background:#2ecc71;">上傳棋子圖片</label>
                 <input type="file" id="tokenUpload" accept="image/*" style="display:none;" onchange="uploadToken(event)">
             </div>
+            <!-- 下方新增：狀態管理區塊 -->
+            <div class="sub-section">
+                <span style="font-weight:bold;white-space:nowrap;">狀態：</span>
+                <label class="upload-btn" for="statusUpload" style="background:#3498db;">上傳狀態圖片</label>
+                <input type="file" id="statusUpload" accept="image/*" style="display:none;" onchange="uploadStatus(event)">
+            </div>
         </div>
     </div>
     <div id="ctxMenu"><div class="ctx-item" id="ctxDelBtn" style="color:#ff6b6b;">刪除圖片</div></div>
@@ -113,7 +123,6 @@
             
             initMapControls();
             
-            // 【核心修復】安全地在 onload 之後將事件綁定到右下角重設按鈕上
             document.getElementById('btnResetZoom').addEventListener('click', resetZoom);
             window.addEventListener('click',()=>ctxMenu.style.display='none');
         };
@@ -173,14 +182,9 @@
                 n.onload=function(e){
                     const data=e.target.result,box=document.createElement('div');
                     box.className='p-token-item',box.style.backgroundImage=`url('${data}')`;
-                    
                     box.onclick=function(){
                         const choice = confirm("點擊「確定」召喚為 玩家棋子（綠框）\n點擊「取消」召喚為 敵人棋子（紅框）");
-                        if(choice) {
-                            spawnToken(data, 'player-token');
-                        } else {
-                            spawnToken(data, 'enemy-token');
-                        }
+                        if(choice) { spawnToken(data, 'player-token'); } else { spawnToken(data, 'enemy-token'); }
                     };
                     document.getElementById('tokenPreviewArea').appendChild(box),evt.target.value="";
                 };
@@ -191,6 +195,33 @@
         function spawnToken(data,cls){
             const n=document.createElement('div');
             n.className=`token ${cls}`,n.style.backgroundImage=`url('${data}')`;
+            let dragging=!1,tX=0,tY=0;
+            n.addEventListener('mousedown',e=>{e.stopPropagation(),dragging=!0,tX=e.clientX-n.offsetLeft,tY=e.clientY-n.offsetTop;});
+            window.addEventListener('mousemove',e=>{dragging&&(n.style.left=`${e.clientX-tX}px`,n.style.top=`${e.clientY-tY}px`);});
+            window.addEventListener('mouseup',()=>{dragging=!1;});
+            mapWrapper.appendChild(n);
+        }
+
+        /* 新增：狀態標記的上傳與生成邏輯 */
+        function uploadStatus(evt){
+            const t=evt.target.files;
+            if(t.length){
+                const n=new FileReader();
+                n.onload=function(e){
+                    const data=e.target.result,box=document.createElement('div');
+                    box.className='p-status-item',box.style.backgroundImage=`url('${data}')`;
+                    
+                    // 點擊左側狀態預覽，在中央召喚狀態標記
+                    box.onclick=function(){ spawnStatusMarker(data); };
+                    document.getElementById('statusPreviewArea').appendChild(box),evt.target.value="";
+                };
+                n.readAsDataURL(t[0]);
+            }
+        }
+
+        function spawnStatusMarker(data){
+            const n=document.createElement('div');
+            n.className='status-marker',n.style.backgroundImage=`url('${data}')`;
             let dragging=!1,tX=0,tY=0;
             n.addEventListener('mousedown',e=>{e.stopPropagation(),dragging=!0,tX=e.clientX-n.offsetLeft,tY=e.clientY-n.offsetTop;});
             window.addEventListener('mousemove',e=>{dragging&&(n.style.left=`${e.clientX-tX}px`,n.style.top=`${e.clientY-tY}px`);});
