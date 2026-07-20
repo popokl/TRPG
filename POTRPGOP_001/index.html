@@ -22,7 +22,7 @@
         .sub-section { display:flex; align-items:center; gap:8px; border-right:1px solid #444; padding-right:15px; }
         .sub-section:last-child { border-right:none; }
         
-        /* 【核心修正】浮動式工具列：範圍置中且縮小 */
+        /* 浮動式工具列：範圍置中且縮小 */
         .bottom-float { position:absolute; bottom:0; left:50%; transform:translate(-50%, calc(100% - 24px)); z-index:100; display:flex; flex-direction:column; align-items:center; transition:transform 0.25s ease; width:auto; max-width:90vw; }
         .arrow-trigger { background:#2a2a2a; color:#fff; padding:2px 20px; font-size:14px; font-weight:bold; border-radius:6px 6px 0 0; cursor:pointer; width:auto; text-align:center; }
         .bottom-bar { height:45px; overflow:hidden; border-radius:6px 6px 0 0; border:1px solid #444; border-bottom:none; justify-content:center; }
@@ -41,14 +41,14 @@
         .ctx-item { padding:6px 20px; cursor:pointer; white-space:nowrap; }
         .ctx-item:hover { background:#4a90e2; }
 
-        /* 【核心修正】網頁右下角獨立的迴圈箭頭按鈕 */
+        /* 網頁右下角獨立的迴圈箭頭按鈕 */
         .reset-zoom-btn { position:fixed; bottom:20px; right:20px; background:#2a2a2a; color:#fff; border:1px solid #555; width:35px; height:35px; border-radius:50%; font-size:18px; font-weight:bold; cursor:pointer; display:flex; justify-content:center; align-items:center; z-index:101; box-shadow:0 2px 5px rgba(0,0,0,0.3); transition:background 0.2s; }
         .reset-zoom-btn:hover { background:#4a90e2; border-color:#4a90e2; }
     </style>
 </head>
 <body>
-    <!-- 右下角獨立重設按鈕 -->
-    <button class="reset-zoom-btn" onclick="resetZoom()" title="居中復原">⟳</button>
+    <!-- 右下角獨立重設按鈕（安全移除內聯 onclick，交由 JS 安全綁定） -->
+    <button class="reset-zoom-btn" id="btnResetZoom" title="居中復原">⟳</button>
 
     <div class="bar">
         <span style="font-weight:bold;">擲骰檢定：</span>
@@ -83,7 +83,6 @@
             </div>
         </div>
     </div>
-    <!-- 下方懸浮精簡工具列（已改成地圖、置中縮小） -->
     <div class="bottom-float">
         <div class="arrow-trigger">▲</div>
         <div class="bar bottom-bar">
@@ -111,7 +110,11 @@
             if(localStorage.getItem("trpg_san"))document.getElementById("charSAN").value=localStorage.getItem("trpg_san");
             const s=localStorage.getItem("trpg_map_bg");
             if(s)mapWrapper.style.backgroundImage=`url('${s}')`;
+            
             initMapControls();
+            
+            // 【核心修復】安全地在 onload 之後將事件綁定到右下角重設按鈕上
+            document.getElementById('btnResetZoom').addEventListener('click', resetZoom);
             window.addEventListener('click',()=>ctxMenu.style.display='none');
         };
 
