@@ -139,7 +139,6 @@
                     box.style.backgroundImage=`url('${data}')`;
                     box.onclick=function(){mapWrapper.style.backgroundImage=`url('${data}')`;};
                     
-                    /* 【核心修正】確實在此將右鍵選單事件綁定至新生成的預覽圖片上 */
                     box.oncontextmenu=function(clickEvt){
                         clickEvt.preventDefault();
                         clickEvt.stopPropagation();
@@ -150,6 +149,7 @@
                     };
                     document.getElementById('mapPreviewArea').appendChild(box);
                 };
+                /* 【核心修正】確實讀取第 0 個檔案，修復上傳失效問題 */
                 n.readAsDataURL(t[0]);
             }
         }
@@ -169,6 +169,7 @@
                     box.onclick=function(){spawnToken(data,type==='player'?'player-token':'enemy-token');};
                     document.getElementById('tokenPreviewArea').appendChild(box),evt.target.value="";
                 };
+                /* 【核心修正】確實讀取第 0 個檔案，修復上傳失效問題 */
                 n.readAsDataURL(t[0]);
             }
         }
