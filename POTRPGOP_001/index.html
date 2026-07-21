@@ -1049,8 +1049,10 @@
             }
         });
 
-        // 8. 權限控制
-        const isGM = true; 
+        // 8. 權限控制 (透過網址參數自動區分 GM 與玩家)
+        const urlParams = new URLSearchParams(window.location.search);
+        const isGM = urlParams.get('role') === 'gm'; 
+
         if (!isGM) {
             document.getElementById('gmPanel').classList.add('hidden');
         }
