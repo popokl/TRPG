@@ -39,32 +39,61 @@
 <div class="bottom-float"><div class="arrow-trigger">▲</div><div class="bar bottom-bar"><button class="btn-black-white" onclick="openModal('modalMap')">地圖</button><button class="btn-black-white" onclick="openModal('modalToken')">棋子</button><button class="btn-black-white" onclick="openModal('modalStatus')">狀態</button></div></div>
 <div class="modal" id="modalMap"><div class="modal-header"><span>地圖庫</span><button class="modal-close" onclick="closeModal('modalMap')">X</button></div><div class="modal-body"><label class="upload-btn" for="mapUpload" style="background:#e67e22;text-align:center;">上傳地圖</label><input type="file" id="mapUpload" accept="image/*" style="display:none;" onchange="handleUpload(event,'map')"><div class="preview-box" id="mapPreviewArea"></div></div></div>
 <div class="modal" id="modalToken"><div class="modal-header"><span>棋子庫</span><button class="modal-close" onclick="closeModal('modalToken')">X</button></div><div class="modal-body"><label class="upload-btn" for="tokenUpload" style="background:#2ecc71;text-align:center;">上傳棋子</label><input type="file" id="tokenUpload" accept="image/*" style="display:none;" onchange="handleUpload(event,'token')"><div class="preview-box" id="tokenPreviewArea"></div></div></div>
-<div class="modal" id="modalStatus"><div class="modal-header"><span>狀態庫</span><button class="modal-close" onclick="closeModal('modalStatus')">X</button></div><div class="modal-body"><label class="upload-btn" for="statusUpload" style="background:#3498db;text-align:center;">上傳狀態</label><input type="file" id="statusUpload" accept="image/*" style="display:none;" onchange="handleUpload(event,'status')"><div class="preview-box" id="statusPreviewArea"></div></div></div>
+<div class="modal" id="modalStatus"><div class="modal-header"><span>狀態庫</span><button class="modal-close" onclick="closeModal('modalStatus')">X</button></div><div class="modal-body"><label class="upload-btn" for="statusUpload" style="background:#3498db;text-align:center;">上傳狀態</label><input type="file" id="statusUpload" accept="image/*" style="display:none;" onchange="uploadStatus(event)"><div class="preview-box" id="statusPreviewArea"></div></div></div>
 <div id="ctxMenu"><div class="ctx-item" id="ctxDelBtn">刪除</div></div>
 <script>
-    let scale=1,posX=0,posY=0,isDragging=!1,startX,startY,activeItem=null,db=null;const mapContainer=document.getElementById('mapContainer'),mapWrapper=document.getElementById('mapWrapper'),ctxMenu=document.getElementById('ctxMenu'),dbRequest=indexedDB.open("TRPG_VTT_DB",1);
-    dbRequest.onupgradeneeded=e=>{e.target.result.createObjectStore("assets",{keyPath:"id"});};dbRequest.onsuccess=e=>{db=e.target.result;loadDB();};
-    window.onload=function(){if(localStorage.getItem("trpg_name"))document.getElementById("charName").value=localStorage.getItem("trpg_name");if(localStorage.getItem("trpg_hp"))document.getElementById("charHP").value=localStorage.getItem("trpg_hp");if(localStorage.getItem("trpg_san"))document.getElementById("charSAN").value=localStorage.getItem("trpg_san");initControls();document.getElementById('btnResetZoom').onclick=resetZoom;window.onclick=()=>ctxMenu.style.display='none';};
-    function saveDB(i,d){if(db)db.transaction("assets","readwrite").objectStore("assets").put({id:i,data:d});}function deleteDB(i){if(db)db.transaction("assets","readwrite").objectStore("assets").delete(i);}
-    function loadDB(){if(!db)return;db.transaction("assets","readonly").objectStore("assets").openCursor().onsuccess=e=>{let c=e.target.result;if(c){let k=c.value.id,v=c.value.data;if(k==="bg")mapWrapper.style.backgroundImage=`url('${v}')`;else renderPreview(v,k.split('_')[0],k);c.continue();}};}
-    function openModal(i){['modalMap','modalToken','modalStatus'].forEach(m=>document.getElementById(m).style.display='none');document.getElementById(i).style.display='flex';}function closeModal(i){document.getElementById(i).style.display='none';}
+    let scale=1,posX=0,posY=0,isDragging=!1,startX,startY,activeItem=null,db=null;
+    const mapContainer=document.getElementById('mapContainer'),mapWrapper=document.getElementById('mapWrapper'),ctxMenu=document.getElementById('ctxMenu'),dbRequest=indexedDB.open("TRPG_VTT_DB",1);
+    dbRequest.onupgradeneeded=e=>{e.target.result.createObjectStore("assets",{keyPath:"id"});};
+    dbRequest.onsuccess=e=>{db=e.target.result;loadDB();};
+    window.onload=function(){
+        if(localStorage.getItem("trpg_name"))document.getElementById("charName").value=localStorage.getItem("trpg_name");
+        if(localStorage.getItem("trpg_hp"))document.getElementById("charHP").value=localStorage.getItem("trpg_hp");
+        if(localStorage.getItem("trpg_san"))document.getElementById("charSAN").value=localStorage.getItem("trpg_san");
+        initControls();document.getElementById('btnResetZoom').onclick=resetZoom;window.onclick=()=>ctxMenu.style.display='none';
+    };
+    function saveDB(i,d){if(db)db.transaction("assets","readwrite").objectStore("assets").put({id:i,data:d});}
+    function deleteDB(i){if(db)db.transaction("assets","readwrite").objectStore("assets").delete(i);}
+    function loadDB(){
+        if(!db)return;
+        db.transaction("assets","readonly").objectStore("assets").openCursor().onsuccess=e=>{
+            let c=e.target.result;if(c){
+                let k=c.value.id,v=c.value.data;
+                if(k==="bg")mapWrapper.style.backgroundImage=`url('${v}')`;
+                else renderPreview(v,k.split('_'),k);
+                c.continue();
+            }
+        };
+    }
+    function openModal(i){['modalMap','modalToken','modalStatus'].forEach(m=>document.getElementById(m).style.display='none');document.getElementById(i).style.display='flex';}
+    function closeModal(i){document.getElementById(i).style.display='none';}
     function initControls(){
         function e(e){e.preventDefault();scale=Math.max(0.4,Math.min(6,scale+((e.deltaY?-e.deltaY:e.wheelDelta)>0?0.1:-0.1))),mapWrapper.style.transform=`translate(${posX}px, ${posY}px) scale(${scale})`;}
         mapContainer.addEventListener('wheel',e,{passive:!1}),mapContainer.addEventListener('mousewheel',e,{passive:!1});
         mapContainer.onmousedown=e=>{if(e.target!==mapContainer&&e.target!==mapWrapper&&!e.target.classList.contains('grid-layer'))return;isDragging=!0;startX=e.clientX-posX;startY=e.clientY-posY;};
         window.onmousemove=e=>{if(isDragging){posX=e.clientX-startX;posY=e.clientY-startY;mapWrapper.style.transform=`translate(${posX}px, ${posY}px) scale(${scale})`;}};window.onmouseup=()=>{isDragging=!1;};
     }
-    function resetZoom(){scale=1;posX=0;posY=0;mapWrapper.style.transform=`translate(0px,0px) scale(1)`;}function saveData(){localStorage.setItem("trpg_name",document.getElementById("charName").value),localStorage.setItem("trpg_hp",document.getElementById("charHP").value),localStorage.setItem("trpg_san",document.getElementById("charSAN").value);}
-    function handleUpload(evt,type){const f=evt.target.files;if(f.length){const r=new FileReader();r.onload=function(e){const d=e.target.result;if(type==='map'){mapWrapper.style.backgroundImage=`url('${d}')`;saveDB("bg",d);}let uid=type+"_"+Date.now();saveDB(uid,d);renderPreview(d,type,uid);};r.readAsDataURL(f);}}
-    function renderPreview(d,t,u){
-        const b=document.createElement('div');b.className='p-item '+(t==='token'?'p-token':'');b.style.backgroundImage=`url('${d}')`;b.dataset.id=u;
-        b.onclick=function(){if(t==='map'){mapWrapper.style.backgroundImage=`url('${d}')`;saveDB("bg",d);}else if(t==='token'){const c=confirm("確定：玩家（綠）\n取消：敵人（紅）");spawn(d,c?'token player-token':'token enemy-token');}else spawn(d,'status-marker');};
-        b.oncontextmenu=function(e){e.preventDefault();e.stopPropagation();activeItem=b;ctxMenu.style.left=`${e.clientX}px`;ctxMenu.style.top=`${e.clientY}px`;ctxMenu.style.display='block';};document.getElementById(t+'PreviewArea').appendChild(b);
+    function resetZoom(){scale=1;posX=0;posY=0;mapWrapper.style.transform=`translate(0px,0px) scale(1)`;}
+    function saveData(){localStorage.setItem("trpg_name",document.getElementById("charName").value),localStorage.setItem("trpg_hp",document.getElementById("charHP").value),localStorage.setItem("trpg_san",document.getElementById("charSAN").value);}
+    function handleUpload(evt,currentType){
+        const f=evt.target.files;if(f.length){
+            const r=new FileReader();r.onload=(function(t){return function(e){
+                const d=e.target.result;if(t==='map'){mapWrapper.style.backgroundImage=`url('${d}')`;saveDB("bg",d);}
+                let uid=t+"_"+Date.now();saveDB(uid,d);renderPreview(d,t,uid);
+            };})(currentType);r.readAsDataURL(f);evt.target.value="";
+        }
+    }
+    function renderPreview(data,type,uid){
+        const b=document.createElement('div');b.className='p-item '+(type==='token'?'p-token':'');b.style.backgroundImage=`url('${data}')`;b.dataset.id=uid;
+        b.onclick=function(){if(type==='map'){mapWrapper.style.backgroundImage=`url('${data}')`;saveDB("bg",data);}else if(type==='token'){const c=confirm("確定：玩家（綠）\n取消：敵人（紅）");spawn(data,c?'token player-token':'token enemy-token');}else spawn(data,'status-marker');};
+        b.oncontextmenu=function(e){e.preventDefault();e.stopPropagation();activeItem=b;ctxMenu.style.left=`${e.clientX}px`;ctxMenu.style.top=`${e.clientY}px`;ctxMenu.style.display='block';};
+        document.getElementById(type+'PreviewArea').appendChild(b);
     }
     document.getElementById('ctxDelBtn').onclick=function(){if(activeItem){let uid=activeItem.dataset.id;deleteDB(uid);if(uid.startsWith('map')){db.transaction("assets","readonly").objectStore("assets").get("bg").onsuccess=e=>{if(e.target.result&&e.target.result.data===activeItem.style.backgroundImage.replace(/^url\(['"]?(.+?)['"]?\)$/,'$1')){mapWrapper.style.backgroundImage="none";deleteDB("bg");}};}activeItem.remove();activeItem=null;}};
     function spawn(d,c){
-        const n=document.createElement('div'); n.className=c; n.style.backgroundImage=`url('${d}')`; let dg=!1,tX=0,tY=0;n.onmousedown=e=>{e.stopPropagation();dg=!0;tX=e.clientX-n.offsetLeft;tY=e.clientY-n.offsetTop;};
+        const n=document.createElement('div');n.className=c;n.style.backgroundImage=`url('${d}')`;let dg=!1,tX=0,tY=0;n.onmousedown=e=>{e.stopPropagation();dg=!0;tX=e.clientX-n.offsetLeft;tY=e.clientY-n.offsetTop;};
         window.onmousemove=e=>{if(dg){n.style.left=`${e.clientX-tX}px`;n.style.top=`${e.clientY-tY}px`;}};window.onmouseup=()=>{dg=!1;};mapWrapper.appendChild(n);
     }
-    function rollDice(e){document.getElementById("diceOutput").innerText=`D${e} 結果 ➔ ${Math.floor(Math.random()*e)+1}`;}document.querySelectorAll('.upload-btn').forEach(e=>{e.onmousedown=e=>e.stopPropagation();});
+    function rollDice(e){document.getElementById("diceOutput").innerText=`D${e} 結果 ➔ ${Math.floor(Math.random()*e)+1}`;}
+    document.querySelectorAll('.upload-btn').forEach(e=>{e.onmousedown=e=>e.stopPropagation();});
 </script></body></html>
