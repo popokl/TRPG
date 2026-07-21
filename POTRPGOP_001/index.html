@@ -358,7 +358,8 @@
             background: transparent;
         }
 
-        .gm-panel:hover {
+        .gm-panel:hover,
+        .gm-panel.force-open {
             transform: translate(-50%, 0);
         }
 
@@ -415,7 +416,7 @@
         }
         .gm-buttons button:hover { background: #6b3333; }
 
-        /* GM 懸浮預覽視窗 (Hover Popup) - 調整為固定定位並顯示在按鍵下方 */
+        /* GM 懸浮預覽視窗 (Hover Popup) */
         .gm-hover-popup {
             position: fixed;
             background: #2d2d2d;
@@ -609,7 +610,7 @@
         </div>
     </div>
 
-    <!-- 懸浮預覽視窗 (移至 body 根層以確保定位與滑鼠互動順暢) -->
+    <!-- 懸浮預覽視窗 -->
     <div class="gm-hover-popup" id="gmHoverPopup"></div>
 
     <!-- GM 上傳視窗 (Modal) -->
@@ -809,7 +810,8 @@
             updateMapTransform();
         });
 
-        // 5. GM 工具列按鍵彈出視窗與上傳預覽、分類懸浮預覽 (支援順暢移動與下方點選)
+        // 5. GM 工具列按鍵彈出視窗與上傳預覽、分類懸浮預覽
+        const gmPanel = document.getElementById('gmPanel');
         const gmModal = document.getElementById('gmModal');
         const modalTitle = document.getElementById('modalTitle');
         const closeModalBtn = document.getElementById('closeModalBtn');
@@ -823,6 +825,25 @@
         let currentToolCategory = '';
         let currentTempImageSrc = '';
         let hoverTimeout = null;
+        let gmPanelTimeout = null;
+
+        // 保持 GM 工具列展開的狀態管理
+        function keepGmPanelOpen() {
+            clearTimeout(gmPanelTimeout);
+            gmPanel.classList.add('force-open');
+        }
+
+        function tryCloseGmPanel() {
+            clearTimeout(gmPanelTimeout);
+            gmPanelTimeout = setTimeout(() => {
+                gmPanel.classList.remove('force-open');
+            }, 150);
+        }
+
+        gmPanel.addEventListener('mouseenter', keepGmPanelOpen);
+        gmPanel.addEventListener('mouseleave', tryCloseGmPanel);
+        gmHoverPopup.addEventListener('mouseenter', keepGmPanelOpen);
+        gmHoverPopup.addEventListener('mouseleave', tryCloseGmPanel);
 
         function renderHoverPopup(category) {
             gmHoverPopup.innerHTML = '';
