@@ -463,11 +463,6 @@
             gap: 15px;
         }
 
-        .modal-action-row {
-            display: flex;
-            gap: 10px;
-        }
-
         .upload-btn, .modal-action-btn {
             background: #4a2323;
             color: white;
@@ -476,13 +471,13 @@
             border-radius: 4px;
             cursor: pointer;
             text-align: center;
-            flex: 1;
+            width: 100%;
         }
         .upload-btn:hover, .modal-action-btn:hover { background: #6b3333; }
 
         .preview-area {
             width: 100%;
-            height: 200px;
+            height: 220px;
             background: #1a1a1a;
             border: 1px dashed #555;
             border-radius: 4px;
@@ -603,36 +598,19 @@
         </div>
     </div>
 
-    <!-- GM 上傳視窗 (Modal) -->
+    <!-- GM 素材庫視窗 (Modal) -->
     <div class="modal-overlay" id="gmModal">
         <div class="modal-box">
             <div class="modal-header">
-                <h3 id="modalTitle">GM 工具視窗</h3>
+                <h3 id="modalTitle">素材庫</h3>
                 <button class="modal-close-btn" id="closeModalBtn">&times;</button>
             </div>
             <div class="modal-body">
-                <!-- 上傳檢視區塊 (Upload View) -->
-                <div id="uploadView">
-                    <input type="file" id="fileInput" accept="image/*" class="hidden">
-                    <div class="modal-action-row">
-                        <button class="upload-btn" id="uploadTriggerBtn">上傳圖片</button>
-                        <button class="upload-btn" id="uploadConfirmBtn">確認</button>
-                    </div>
-                    <div class="preview-area" id="previewArea">
-                        <span>圖片預覽區</span>
-                    </div>
+                <input type="file" id="fileInput" accept="image/*" class="hidden">
+                <button class="upload-btn" id="uploadTriggerBtn">上傳圖片</button>
+                <div class="preview-area" id="previewArea">
+                    <span>尚無上傳圖片資料</span>
                 </div>
-
-                <!-- 素材庫檢視區塊 (Material Library View) -->
-                <div id="materialView" class="hidden">
-                    <div class="preview-area" id="materialPreviewArea" style="height: 200px;">
-                        <span>尚無上傳圖片資料</span>
-                    </div>
-                    <button class="modal-action-btn" id="materialBackBtn">返回上一個視窗</button>
-                </div>
-
-                <!-- 素材按鍵 (原本的資料按鍵，改名為素材並移至下方) -->
-                <button class="modal-action-btn" id="materialBtn">素材</button>
             </div>
         </div>
     </div>
@@ -815,40 +793,44 @@
             updateMapTransform();
         });
 
-        // 5. GM 工具列與彈出視窗設定（含「素材」與「素材庫」切換與返回功能）
+        // 5. GM 工具列與素材庫視窗設定
         const gmModal = document.getElementById('gmModal');
         const modalTitle = document.getElementById('modalTitle');
         const closeModalBtn = document.getElementById('closeModalBtn');
         const gmButtons = document.querySelectorAll('#gmButtonsContainer button');
         const fileInput = document.getElementById('fileInput');
         const uploadTriggerBtn = document.getElementById('uploadTriggerBtn');
-        const uploadConfirmBtn = document.getElementById('uploadConfirmBtn');
         const previewArea = document.getElementById('previewArea');
-        
-        const uploadView = document.getElementById('uploadView');
-        const materialView = document.getElementById('materialView');
-        const materialBtn = document.getElementById('materialBtn');
-        const materialBackBtn = document.getElementById('materialBackBtn');
-        const materialPreviewArea = document.getElementById('materialPreviewArea');
 
         let currentToolCategory = '';
-        let currentTempImageSrc = '';
+
+        function renderMaterialLibrary() {
+            const images = gmImages[currentToolCategory];
+            if (!images || images.length === 0) {
+                previewArea.innerHTML = '<span style="color: #888;">尚無上傳圖片資料</span>';
+                return;
+            }
+            previewArea.innerHTML = '';
+            images.forEach((imgSrc) => {
+                const thumb = document.createElement('img');
+                thumb.src = imgSrc;
+                thumb.className = 'data-thumb';
+                thumb.addEventListener('click', () => {
+                    gmModal.style.display = 'none';
+                    handleImageSelection(currentToolCategory, imgSrc);
+                });
+                previewArea.appendChild(thumb);
+            });
+        }
 
         gmButtons.forEach(btn => {
             const toolName = btn.getAttribute('data-tool');
 
             btn.addEventListener('click', () => {
                 currentToolCategory = toolName;
-                modalTitle.textContent = `GM 工具 - ${toolName}管理`;
-                previewArea.innerHTML = '<span>圖片預覽區</span>';
+                modalTitle.textContent = `素材庫 - ${toolName}`;
                 fileInput.value = '';
-                currentTempImageSrc = '';
-                
-                // 預設顯示上傳檢視
-                uploadView.classList.remove('hidden');
-                materialView.classList.add('hidden');
-                materialBtn.classList.remove('hidden');
-
+                renderMaterialLibrary();
                 gmModal.style.display = 'flex';
             });
         });
@@ -872,53 +854,12 @@
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(event) {
-                    currentTempImageSrc = event.target.result;
-                    previewArea.innerHTML = `<img src="${currentTempImageSrc}" alt="預覽圖片">`;
+                    const imgSrc = event.target.result;
+                    gmImages[currentToolCategory].push(imgSrc);
+                    renderMaterialLibrary();
+                    fileInput.value = '';
                 };
                 reader.readAsDataURL(file);
-            }
-        });
-
-        // 點擊「素材」按鍵：切換至「素材庫」視窗
-        materialBtn.addEventListener('click', () => {
-            modalTitle.textContent = '素材庫';
-            uploadView.classList.add('hidden');
-            materialView.classList.remove('hidden');
-            materialBtn.classList.add('hidden');
-
-            const images = gmImages[currentToolCategory];
-            if (!images || images.length === 0) {
-                materialPreviewArea.innerHTML = '<span style="color: #888;">尚無上傳圖片資料</span>';
-                return;
-            }
-            materialPreviewArea.innerHTML = '';
-            images.forEach((imgSrc) => {
-                const thumb = document.createElement('img');
-                thumb.src = imgSrc;
-                thumb.className = 'data-thumb';
-                thumb.addEventListener('click', () => {
-                    gmModal.style.display = 'none';
-                    handleImageSelection(currentToolCategory, imgSrc);
-                });
-                materialPreviewArea.appendChild(thumb);
-            });
-        });
-
-        // 點擊「返回上一個視窗」按鍵：返回上傳檢視視窗
-        materialBackBtn.addEventListener('click', () => {
-            modalTitle.textContent = `GM 工具 - ${currentToolCategory}管理`;
-            materialView.classList.add('hidden');
-            uploadView.classList.remove('hidden');
-            materialBtn.classList.remove('hidden');
-        });
-
-        uploadConfirmBtn.addEventListener('click', () => {
-            if (currentTempImageSrc && currentToolCategory) {
-                gmImages[currentToolCategory].push(currentTempImageSrc);
-                alert(`成功儲存圖片至「${currentToolCategory}」分類！`);
-                gmModal.style.display = 'none';
-            } else {
-                alert('請先選擇要上傳的圖片！');
             }
         });
 
