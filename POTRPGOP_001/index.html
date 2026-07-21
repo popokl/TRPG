@@ -920,6 +920,7 @@
         let editingTargetPlayer = null; // GM 正在編輯的角色物件
         let activeItemSlotIndex = null;
         let isPlayerJoined = false;
+        let isModalEditable = true;
 
         // 初始化預設角色資料結構
         function createDefaultCharacterData() {
@@ -979,7 +980,7 @@
 
         // 渲染 20 格物品至視窗
         const itemGridBox = document.getElementById('itemGridBox');
-        function renderItemGridInModal(charData) {
+        function renderItemGridInModal(charData, isEditable) {
             itemGridBox.innerHTML = '';
             charData.items.forEach((item, idx) => {
                 const itemBox = document.createElement('div');
@@ -992,10 +993,10 @@
                 } else {
                     if (item.type === 'rest_dice') {
                         itemBox.classList.add('slot-rest');
-                        itemBox.innerHTML = `<span>${item.name}</span><input type="number" class="item-qty" value="${item.qty}" data-idx="${idx}">`;
+                        itemBox.innerHTML = `<span>${item.name}</span><input type="number" class="item-qty" value="${item.qty}" data-idx="${idx}" ${!isEditable ? 'disabled' : ''}>`;
                     } else if (item.type === 'gold') {
                         itemBox.classList.add('slot-gold');
-                        itemBox.innerHTML = `<span>${item.name}</span><input type="number" class="item-qty" value="${item.qty}" data-idx="${idx}">`;
+                        itemBox.innerHTML = `<span>${item.name}</span><input type="number" class="item-qty" value="${item.qty}" data-idx="${idx}" ${!isEditable ? 'disabled' : ''}>`;
                     } else if (item.type === 'unique') {
                         itemBox.classList.add('slot-unique');
                         itemBox.textContent = item.name + (item.desc ? '*' : '');
@@ -1005,42 +1006,46 @@
                     }
                 }
 
-                // 綁定物品格右鍵事件 (GM 或當前編輯者可操作)
-                itemBox.addEventListener('contextmenu', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    activeItemSlotIndex = idx;
-                    playerContextMenu.style.display = 'none';
+                // 綁定物品格右鍵事件 (僅在可編輯模式下運作)
+                if (isEditable) {
+                    itemBox.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        activeItemSlotIndex = idx;
+                        playerContextMenu.style.display = 'none';
 
-                    const itemContextGet = document.getElementById('itemContextGet');
-                    const itemContextDisable = document.getElementById('itemContextDisable');
-                    const itemContextEnable = document.getElementById('itemContextEnable');
+                        const itemContextGet = document.getElementById('itemContextGet');
+                        const itemContextDisable = document.getElementById('itemContextDisable');
+                        const itemContextEnable = document.getElementById('itemContextEnable');
 
-                    if (item.enabled) {
-                        itemContextGet.style.display = 'block';
-                        itemContextDisable.style.display = 'block';
-                        itemContextEnable.style.display = 'none';
-                    } else {
-                        itemContextGet.style.display = 'none';
-                        itemContextDisable.style.display = 'none';
-                        itemContextEnable.style.display = 'block';
-                    }
+                        if (item.enabled) {
+                            itemContextGet.style.display = 'block';
+                            itemContextDisable.style.display = 'block';
+                            itemContextEnable.style.display = 'none';
+                        } else {
+                            itemContextGet.style.display = 'none';
+                            itemContextDisable.style.display = 'none';
+                            itemContextEnable.style.display = 'block';
+                        }
 
-                    itemContextMenu.style.display = 'block';
-                    itemContextMenu.style.left = `${e.clientX}px`;
-                    itemContextMenu.style.top = `${e.clientY}px`;
-                });
+                        itemContextMenu.style.display = 'block';
+                        itemContextMenu.style.left = `${e.clientX}px`;
+                        itemContextMenu.style.top = `${e.clientY}px`;
+                    });
+                }
 
                 itemGridBox.appendChild(itemBox);
             });
 
             // 綁定數量即時更新
-            itemGridBox.querySelectorAll('.item-qty').forEach(input => {
-                input.addEventListener('change', (e) => {
-                    const idx = parseInt(e.target.dataset.idx);
-                    charData.items[idx].qty = parseInt(e.target.value) || 0;
+            if (isEditable) {
+                itemGridBox.querySelectorAll('.item-qty').forEach(input => {
+                    input.addEventListener('change', (e) => {
+                        const idx = parseInt(e.target.dataset.idx);
+                        charData.items[idx].qty = parseInt(e.target.value) || 0;
+                    });
                 });
-            });
+            }
         }
 
         // 開啟編輯角色卡視窗
@@ -1048,7 +1053,7 @@
             joinBtn.addEventListener('click', () => {
                 editingTargetPlayer = null;
                 document.getElementById('charModalTitle').textContent = '編輯角色卡';
-                loadDataIntoCharModal(currentPlayerProfile);
+                loadDataIntoCharModal(currentPlayerProfile, true);
                 charModal.style.display = 'flex';
             });
         }
@@ -1057,25 +1062,42 @@
             charModal.style.display = 'none';
         });
 
-        function loadDataIntoCharModal(charData) {
+        function loadDataIntoCharModal(charData, isEditable) {
+            isModalEditable = isEditable;
             document.getElementById('inputCharName').value = charData.name;
             document.getElementById('displayRace').textContent = charData.race;
             document.getElementById('displayClass').textContent = charData.charClass;
             document.getElementById('inputCharName').disabled = true;
 
-            // 載入數值
+            // 控制編輯按鈕與選單切換按鈕的顯示/隱藏
+            document.getElementById('editNameBtn').style.display = isEditable ? 'inline-block' : 'none';
+            document.getElementById('raceToggleBtn').style.display = isEditable ? 'inline-block' : 'none';
+            document.getElementById('classToggleBtn').style.display = isEditable ? 'inline-block' : 'none';
+
+            // 載入數值並設定 disabled 狀態
             document.querySelectorAll('.stat-field').forEach(input => {
                 const statName = input.dataset.stat;
                 input.value = charData.stats[statName] ?? 10;
+                input.disabled = !isEditable;
             });
 
-            // 載入熟練值
+            // 載入熟練值並設定 disabled 狀態
             document.querySelectorAll('.prof-field').forEach(input => {
                 const profName = input.dataset.prof;
                 input.value = charData.proficiencies[profName] ?? 0;
+                input.disabled = !isEditable;
             });
 
-            renderItemGridInModal(charData);
+            renderItemGridInModal(charData, isEditable);
+
+            // 確認按鈕狀態
+            if (isEditable) {
+                charConfirmBtn.style.display = 'inline-block';
+                charConfirmBtn.textContent = '確認';
+            } else {
+                charConfirmBtn.style.display = 'inline-block';
+                charConfirmBtn.textContent = '關閉';
+            }
         }
 
         // 名字編輯
@@ -1093,6 +1115,7 @@
 
         raceToggleBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (!isModalEditable) return;
             raceDropdown.style.display = raceDropdown.style.display === 'block' ? 'none' : 'block';
             classDropdown.style.display = 'none';
         });
@@ -1110,6 +1133,7 @@
 
         classToggleBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (!isModalEditable) return;
             classDropdown.style.display = classDropdown.style.display === 'block' ? 'none' : 'block';
             raceDropdown.style.display = 'none';
         });
@@ -1142,7 +1166,7 @@
             const targetChar = editingTargetPlayer || currentPlayerProfile;
             if (activeItemSlotIndex !== null) {
                 targetChar.items[activeItemSlotIndex].enabled = false;
-                renderItemGridInModal(targetChar);
+                renderItemGridInModal(targetChar, true);
             }
         });
 
@@ -1151,7 +1175,7 @@
             const targetChar = editingTargetPlayer || currentPlayerProfile;
             if (activeItemSlotIndex !== null) {
                 targetChar.items[activeItemSlotIndex].enabled = true;
-                renderItemGridInModal(targetChar);
+                renderItemGridInModal(targetChar, true);
             }
         });
 
@@ -1167,13 +1191,18 @@
             if (activeItemSlotIndex !== null) {
                 targetChar.items[activeItemSlotIndex].name = itemName;
                 targetChar.items[activeItemSlotIndex].desc = itemDesc;
-                renderItemGridInModal(targetChar);
+                renderItemGridInModal(targetChar, true);
             }
             itemEditModal.style.display = 'none';
         });
 
         // 角色卡確認按鍵
         charConfirmBtn.addEventListener('click', () => {
+            if (!isModalEditable) {
+                charModal.style.display = 'none';
+                return;
+            }
+
             const targetChar = editingTargetPlayer || currentPlayerProfile;
 
             targetChar.name = inputCharName.value.trim() || '未命名冒險者';
@@ -1215,18 +1244,18 @@
                     <span class="card-title-text">${charData.name} (${charData.race} / ${charData.charClass})</span>
                 </div>
                 <div class="player-stats">
-                    <div class="stat-box hp-box"><label>HP: <input type="number" class="stat-input hp-input" value="${charData.hp}"></label></div>
-                    <div class="stat-box mp-box"><label>MP: <input type="number" class="stat-input mp-input" value="${charData.mp}"></label></div>
-                    <div class="stat-box shield-box"><label>護盾: <input type="number" class="stat-input shield-input" value="${charData.shield}"></label></div>
+                    <div class="stat-box hp-box"><label>HP: <input type="number" class="stat-input hp-input" value="${charData.hp}" ${!isGM ? 'disabled' : ''}></label></div>
+                    <div class="stat-box mp-box"><label>MP: <input type="number" class="stat-input mp-input" value="${charData.mp}" ${!isGM ? 'disabled' : ''}></label></div>
+                    <div class="stat-box shield-box"><label>護盾: <input type="number" class="stat-input shield-input" value="${charData.shield}" ${!isGM ? 'disabled' : ''}></label></div>
                 </div>
             `;
 
-            // 左鍵點擊玩家欄位跳出該玩家角色卡資訊
+            // 左鍵點擊玩家欄位跳出該玩家角色卡資訊 (GM 可編輯，玩家只能閱讀)
             playerCard.addEventListener('click', (e) => {
                 if (e.target.tagName === 'INPUT') return;
                 editingTargetPlayer = charData;
                 document.getElementById('charModalTitle').textContent = `角色卡資訊 - ${charData.name}`;
-                loadDataIntoCharModal(charData);
+                loadDataIntoCharModal(charData, isGM);
                 charModal.style.display = 'flex';
             });
 
@@ -1264,7 +1293,7 @@
             if (activePlayerObj) {
                 editingTargetPlayer = activePlayerObj;
                 document.getElementById('charModalTitle').textContent = `編輯角色卡 - ${activePlayerObj.name}`;
-                loadDataIntoCharModal(activePlayerObj);
+                loadDataIntoCharModal(activePlayerObj, true);
                 charModal.style.display = 'flex';
             }
         });
