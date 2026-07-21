@@ -109,12 +109,17 @@
         let scale=1,posX=0,posY=0,isDragging=!1,startX,startY,activeItem=null,activeType=null,db=null;
         const mapContainer=document.getElementById('mapContainer'),mapWrapper=document.getElementById('mapWrapper'),ctxMenu=document.getElementById('ctxMenu');
 
+        // 核心非同步修復：開啟 IndexedDB 連結
         const dbRequest = indexedDB.open("TRPG_VTT_Database", 1);
         dbRequest.onupgradeneeded = function(e) {
             let activeDb = e.target.result;
             if(!activeDb.objectStoreNames.contains("assets")) activeDb.createObjectStore("assets", { keyPath: "id" });
         };
-        dbRequest.onsuccess = function(e) { db = e.target.result; loadAllAssetsFromDB(); };
+        // 【關鍵修正】必須在 onsuccess 內部連線完成後，再正式調用載入函式，否則會抓取失敗
+        dbRequest.onsuccess = function(e) { 
+            db = e.target.result; 
+            loadAllAssetsFromDB(); 
+        };
 
         window.onload=function(){
             if(localStorage.getItem("trpg_name"))document.getElementById("charName").value=localStorage.getItem("trpg_name");
@@ -129,6 +134,7 @@
         function deleteAssetFromDB(id) { if(db) db.transaction("assets", "readwrite").objectStore("assets").delete(id); }
 
         function loadAllAssetsFromDB() {
+            if(!db) return;
             db.transaction("assets", "readonly").objectStore("assets").openCursor().onsuccess = function(e) {
                 let cursor = e.target.result;
                 if(cursor) {
@@ -156,6 +162,7 @@
             window.addEventListener('mouseup',()=>{isDragging=!1,mapContainer.style.cursor='grab';});
         }
 
+        // 座標縮放
         function updateTransform(){mapWrapper.style.transform=`translate(${posX}px, ${posY}px) scale(${scale})`;}
         function resetZoom(){scale=1; posX=0; posY=0; updateTransform();}
         function saveData(){localStorage.setItem("trpg_name",document.getElementById("charName").value),localStorage.setItem("trpg_hp",document.getElementById("charHP").value),localStorage.setItem("trpg_san",document.getElementById("charSAN").value);}
@@ -167,6 +174,7 @@
             };
         }
 
+        // 上傳與恢復地圖
         function uploadMap(evt){
             const files=evt.target.files;
             if(files.length){
@@ -175,7 +183,7 @@
                     const d=e.target.result; mapWrapper.style.backgroundImage=`url('${d}')`;
                     let uid = "map_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
                     saveAssetToDB("current_map_bg", d); saveAssetToDB(uid, d); renderMapPreview(d, uid);
-                }; r.readAsDataURL(files[0]);
+                }; r.readAsDataURL(files);
             }
         }
         function renderMapPreview(data, uid) {
@@ -184,6 +192,7 @@
             bindContextMenu(box, 'map', uid); document.getElementById('mapPreviewArea').appendChild(box);
         }
 
+        // 上傳與恢復棋子
         function uploadToken(evt){
             const files=evt.target.files;
             if(files.length){
@@ -191,7 +200,7 @@
                 r.onload=function(e){
                     const d=e.target.result; let uid = "token_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
                     saveAssetToDB(uid, d); renderTokenPreview(d, uid);
-                }; r.readAsDataURL(files[0]);
+                }; r.readAsDataURL(files);
             }
         }
         function renderTokenPreview(data, uid) {
@@ -203,6 +212,7 @@
             bindContextMenu(box, 'token', uid); document.getElementById('tokenPreviewArea').appendChild(box);
         }
 
+        // 上傳與恢復狀態
         function uploadStatus(evt){
             const files=evt.target.files;
             if(files.length){
@@ -210,7 +220,7 @@
                 r.onload=function(e){
                     const d=e.target.result; let uid = "status_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
                     saveAssetToDB(uid, d); renderStatusPreview(d, uid);
-                }; r.readAsDataURL(files[0]);
+                }; r.readAsDataURL(files);
             }
         }
         function renderStatusPreview(data, uid) {
@@ -219,6 +229,7 @@
             bindContextMenu(box, 'status', uid); document.getElementById('statusPreviewArea').appendChild(box);
         }
 
+        // 刪除按鈕
         document.getElementById('ctxDelBtn').onclick=function(){
             if(activeItem && activeType){
                 ctxMenu.style.display='none'; let uid = activeItem.dataset.id; deleteAssetFromDB(uid);
