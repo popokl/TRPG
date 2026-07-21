@@ -119,12 +119,12 @@
         </div>
     </div>
 
-    <div id="ctxMenu"><div class="ctx-item" id="ctxDelBtn" style="color:#ff6b6b;">刪除圖片</div></div>
+    <!-- 右鍵選單：將原先「刪除圖片」改為更通用的「刪除項目」 -->
+    <div id="ctxMenu"><div class="ctx-item" id="ctxDelBtn" style="color:#ff6b6b;">刪除</div></div>
     <script>
-        let scale=1,posX=0,posY=0,isDragging=!1,startX,startY,activeMapItem=null;
+        let scale=1,posX=0,posY=0,isDragging=!1,startX,startY,activeItem=null,activeType=null;
         const mapContainer=document.getElementById('mapContainer'),mapWrapper=document.getElementById('mapWrapper'),ctxMenu=document.getElementById('ctxMenu');
 
-        // 確保精準初始化各個獨立預覽庫列表的瀏覽器快取
         let savedMaps = JSON.parse(localStorage.getItem("trpg_map_list")) || [];
         let savedTokens = JSON.parse(localStorage.getItem("trpg_token_list")) || [];
         let savedStatuses = JSON.parse(localStorage.getItem("trpg_status_list")) || [];
@@ -137,7 +137,6 @@
             const s=localStorage.getItem("trpg_map_bg");
             if(s)mapWrapper.style.backgroundImage=`url('${s}')`;
             
-            // 【核心修正】開啟網頁時，確實將預覽庫中的所有圖片重建在視窗中
             savedMaps.forEach(data => renderMapPreview(data));
             savedTokens.forEach(data => renderTokenPreview(data));
             savedStatuses.forEach(data => renderStatusPreview(data));
@@ -147,7 +146,13 @@
             window.addEventListener('click',()=>ctxMenu.style.display='none');
         };
 
-        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        // 【核心修正】開啟視窗時，自動迴圈關閉其他所有視窗，確保獨佔不重疊
+        function openModal(id) { 
+            ['modalMap', 'modalToken', 'modalStatus'].forEach(mId => {
+                document.getElementById(mId).style.display = 'none';
+            });
+            document.getElementById(id).style.display = 'flex'; 
+        }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         function initMapControls(){
@@ -165,81 +170,104 @@
         function resetZoom(){scale=1,posX=0,posY=0,updateTransform();}
         function saveData(){localStorage.setItem("trpg_name",document.getElementById("charName").value),localStorage.setItem("trpg_hp",document.getElementById("charHP").value),localStorage.setItem("trpg_san",document.getElementById("charSAN").value);}
 
-        // 地圖管理庫快取紀錄
+        // 通用的右鍵選單呼叫器
+        function bindContextMenu(element, type, dataString) {
+            element.oncontextmenu = function(e) {
+                e.preventDefault(); e.stopPropagation();
+                activeItem = element; activeType = type; element.dataset.raw = dataString;
+                ctxMenu.style.left = `${e.clientX}px`; ctxMenu.style.top = `${e.clientY}px`; ctxMenu.style.display = 'block';
+            };
+        }
+
+        // 地圖庫上傳與預覽
         function uploadMap(evt){
             const mapFiles=evt.target.files;
             if(mapFiles.length){
                 const mapReader=new FileReader();
                 mapReader.onload=function(e){
-                    const data=e.target.result;
-                    mapWrapper.style.backgroundImage=`url('${data}')`;
+                    const data=e.target.result; mapWrapper.style.backgroundImage=`url('${data}')`;
                     try{
-                        localStorage.setItem("trpg_map_bg",data);
-                        savedMaps.push(data);
+                        localStorage.setItem("trpg_map_bg",data); savedMaps.push(data);
                         localStorage.setItem("trpg_map_list", JSON.stringify(savedMaps));
-                    }catch(err){alert("圖片容量偏大，已成功載入！但超出瀏覽器自動記憶上限。建議圖檔壓在 1MB 內以維持重開自動保留功能。");}
+                    }catch(err){}
                     renderMapPreview(data);
                 };
                 mapReader.readAsDataURL(mapFiles[0]);
             }
         }
-
         function renderMapPreview(data) {
-            const box=document.createElement('div');
-            box.className='p-map-item'; box.style.backgroundImage=`url('${data}')`;
+            const box=document.createElement('div'); box.className='p-map-item'; box.style.backgroundImage=`url('${data}')`;
             box.onclick=function(){mapWrapper.style.backgroundImage=`url('${data}')`; localStorage.setItem("trpg_map_bg",data);};
-            box.oncontextmenu=function(clickEvt){
-                clickEvt.preventDefault();clickEvt.stopPropagation(); activeMapItem=box;
-                ctxMenu.style.left=`${clickEvt.clientX}px`;ctxMenu.style.top=`${clickEvt.clientY}px`;ctxMenu.style.display='block';
-            };
+            bindContextMenu(box, 'map', data);
             document.getElementById('mapPreviewArea').appendChild(box);
         }
 
-        // 右鍵安全精準過濾刪除地圖預覽
-        document.getElementById('ctxDelBtn').onclick=function(){
-            if(activeMapItem){
-                ctxMenu.style.display='none';
-                const bgUrl = activeMapItem.style.backgroundImage.replace(/^url\(['"]?(.+?)['"]?\)$/, '$1');
-                savedMaps = savedMaps.filter(url => url !== bgUrl && !url.includes(bgUrl) && !bgUrl.includes(url));
-                localStorage.setItem("trpg_map_list", JSON.stringify(savedMaps));
-                
-                const currentBg = mapWrapper.style.backgroundImage.replace(/^url\(['"]?(.+?)['"]?\)$/, '$1');
-                activeMapItem.remove(); activeMapItem=null;
-                if(currentBg === bgUrl || currentBg.includes(bgUrl) || bgUrl.includes(currentBg)) {
-                    mapWrapper.style.backgroundImage = "none"; localStorage.removeItem("trpg_map_bg");
-                }
-            }
-        };
-        
-        function rollDice(e){document.getElementById("diceOutput").innerText=`D${e} 結果 ➔ ${Math.floor(Math.random()*e)+1}`;}
-        document.querySelectorAll('.upload-btn').forEach(e=>{e.addEventListener('mousedown',e=>e.stopPropagation());});
-
-        // 棋子資源庫快取紀錄
+        // 棋子庫上傳與預覽
         function uploadToken(evt){
             const tokenFiles=evt.target.files;
             if(tokenFiles.length){
                 const tokenReader=new FileReader();
                 tokenReader.onload=function(e){
                     const data=e.target.result;
-                    try {
-                        savedTokens.push(data);
-                        localStorage.setItem("trpg_token_list", JSON.stringify(savedTokens));
-                    } catch(err){}
+                    try { savedTokens.push(data); localStorage.setItem("trpg_token_list", JSON.stringify(savedTokens)); } catch(err){}
                     renderTokenPreview(data);
                 };
                 tokenReader.readAsDataURL(tokenFiles[0]);
             }
         }
-
         function renderTokenPreview(data) {
-            const box=document.createElement('div');
-            box.className='p-token-item'; box.style.backgroundImage=`url('${data}')`;
+            const box=document.createElement('div'); box.className='p-token-item'; box.style.backgroundImage=`url('${data}')`;
             box.onclick=function(){
                 const choice = confirm("點擊「確定」召喚為 玩家棋子（綠框）\n點擊「取消」召喚為 敵人棋子（紅框）");
                 if(choice) { spawnToken(data, 'player-token'); } else { spawnToken(data, 'enemy-token'); }
             };
+            bindContextMenu(box, 'token', data);
             document.getElementById('tokenPreviewArea').appendChild(box);
         }
+
+        // 狀態庫上傳與預覽
+        function uploadStatus(evt){
+            const statusFiles=evt.target.files;
+            if(statusFiles.length){
+                const statusReader=new FileReader();
+                statusReader.onload=function(e){
+                    const data=e.target.result;
+                    try { savedStatuses.push(data); localStorage.setItem("trpg_status_list", JSON.stringify(savedStatuses)); } catch(err){}
+                    renderStatusPreview(data);
+                };
+                statusReader.readAsDataURL(statusFiles[0]);
+            }
+        }
+        function renderStatusPreview(data) {
+            const box=document.createElement('div'); box.className='p-status-item'; box.style.backgroundImage=`url('${data}')`;
+            box.onclick=function(){ spawnStatusMarker(data); };
+            bindContextMenu(box, 'status', data);
+            document.getElementById('statusPreviewArea').appendChild(box);
+        }
+
+        // 【核心修正】右鍵點擊「刪除」時，自動依據類型剔除記憶快取，達成全預覽庫支援右鍵刪除
+        document.getElementById('ctxDelBtn').onclick=function(){
+            if(activeItem && activeType){
+                ctxMenu.style.display='none';
+                const rawData = activeItem.dataset.raw;
+                
+                if(activeType === 'map') {
+                    savedMaps = savedMaps.filter(url => url !== rawData);
+                    localStorage.setItem("trpg_map_list", JSON.stringify(savedMaps));
+                    if(localStorage.getItem("trpg_map_bg") === rawData) {
+                        mapWrapper.style.backgroundImage = "none"; localStorage.removeItem("trpg_map_bg");
+                    }
+                } else if(activeType === 'token') {
+                    savedTokens = savedTokens.filter(url => url !== rawData);
+                    localStorage.setItem("trpg_token_list", JSON.stringify(savedTokens));
+                } else if(activeType === 'status') {
+                    savedStatuses = savedStatuses.filter(url => url !== rawData);
+                    localStorage.setItem("trpg_status_list", JSON.stringify(savedStatuses));
+                }
+                
+                activeItem.remove(); activeItem=null; activeType=null;
+            }
+        };
 
         function spawnToken(data,cls){
             const n=document.createElement('div'); n.className=`token ${cls}`; n.style.backgroundImage=`url('${data}')`;
@@ -250,30 +278,6 @@
             mapWrapper.appendChild(n);
         }
 
-        // 狀態標記庫快取紀錄
-        function uploadStatus(evt){
-            const statusFiles=evt.target.files;
-            if(statusFiles.length){
-                const statusReader=new FileReader();
-                statusReader.onload=function(e){
-                    const data=e.target.result;
-                    try {
-                        savedStatuses.push(data);
-                        localStorage.setItem("trpg_status_list", JSON.stringify(savedStatuses));
-                    } catch(err){}
-                    renderStatusPreview(data);
-                };
-                statusReader.readAsDataURL(statusFiles[0]);
-            }
-        }
-
-        function renderStatusPreview(data) {
-            const box=document.createElement('div');
-            box.className='p-status-item'; box.style.backgroundImage=`url('${data}')`;
-            box.onclick=function(){ spawnStatusMarker(data); };
-            document.getElementById('statusPreviewArea').appendChild(box);
-        }
-
         function spawnStatusMarker(data){
             const n=document.createElement('div'); n.className='status-marker'; n.style.backgroundImage=`url('${data}')`;
             let dragging=!1,tX=0,tY=0;
@@ -282,6 +286,9 @@
             window.addEventListener('mouseup',()=>{dragging=!1;});
             mapWrapper.appendChild(n);
         }
+        
+        function rollDice(e){document.getElementById("diceOutput").innerText=`D${e} 結果 ➔ ${Math.floor(Math.random()*e)+1}`;}
+        document.querySelectorAll('.upload-btn').forEach(e=>{e.addEventListener('mousedown',e=>e.stopPropagation());});
     </script>
 </body>
 </html>
