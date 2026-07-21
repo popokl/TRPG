@@ -128,7 +128,7 @@
         }
 
         .panel-content {
-            width: 280px;
+            width: 320px;
             padding: 20px;
             min-height: 400px;
             max-height: 80vh;
@@ -206,26 +206,55 @@
             border-bottom: 1px solid #4a6fa5;
         }
 
+        /* 數值分隔群組 */
         .player-stats {
             display: flex;
-            gap: 10px;
+            gap: 6px;
             font-size: 13px;
         }
 
-        .player-stats label {
+        .stat-box {
+            padding: 4px 6px;
+            border-radius: 4px;
             display: flex;
             align-items: center;
-            gap: 4px;
+            flex: 1;
+        }
+
+        /* 指定底色與文字顏色 */
+        .hp-box {
+            background-color: #ffcccc; /* 淺紅色 */
+            color: #333;
+        }
+
+        .mp-box {
+            background-color: #cce5ff; /* 淺藍色 */
+            color: #333;
+        }
+
+        .shield-box {
+            background-color: #d4edda; /* 淺綠色 */
+            color: #333;
+        }
+
+        .stat-box label {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            font-weight: bold;
+            font-size: 12px;
+            width: 100%;
         }
 
         .stat-input {
-            width: 60px;
-            background: #1a1a1a;
-            color: white;
-            border: 1px solid #555;
-            padding: 3px;
+            width: 100%;
+            background: #ffffff;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 2px;
             border-radius: 3px;
             text-align: center;
+            font-weight: bold;
         }
         .stat-input:focus {
             outline: none;
@@ -551,17 +580,24 @@
         let activePlayerCard = null;
 
         addPlayerBtn.addEventListener('click', () => {
-            const currentCount = playerList.children.length;
+            const currentCount = playerList.children.length + 1;
             const playerCard = document.createElement('div');
             playerCard.className = 'player-card';
 
             playerCard.innerHTML = `
                 <div class="player-header">
-                    <input type="text" class="player-name-input" value="玩家 ${currentCount + 1}">
+                    <input type="text" class="player-name-input" value="玩家 ${currentCount}">
                 </div>
                 <div class="player-stats">
-                    <label>HP: <input type="number" class="stat-input" value="100"></label>
-                    <label>MP: <input type="number" class="stat-input" value="50"></label>
+                    <div class="stat-box hp-box">
+                        <label>HP: <input type="number" class="stat-input" value="0"></label>
+                    </div>
+                    <div class="stat-box mp-box">
+                        <label>MP: <input type="number" class="stat-input" value="0"></label>
+                    </div>
+                    <div class="stat-box shield-box">
+                        <label>護盾: <input type="number" class="stat-input" value="0"></label>
+                    </div>
                 </div>
             `;
 
@@ -591,15 +627,15 @@
             playerContextMenu.style.display = 'none';
         });
 
-        // 4. 地圖拖曳平移、縮放與重設功能
+        // 4. 地圖拖曳平移、縮放與重設功能 (大幅增加縮小範圍)
         const mapArea = document.getElementById('mapArea');
         let currentScale = 1.0;
         let panX = 0;
         let panY = 0;
         let isDragging = false;
         let startX, startY;
-        const minScale = 0.4;
-        const maxScale = 2.5;
+        const minScale = 0.05; // 允許縮小到更小的比例
+        const maxScale = 3.0;
 
         function updateMapTransform() {
             mapContainer.style.transform = `translate(${panX}px, ${panY}px) scale(${currentScale})`;
