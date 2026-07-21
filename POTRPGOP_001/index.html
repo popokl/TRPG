@@ -16,15 +16,17 @@
             background-color: #121212;
             color: #ffffff;
             overflow: hidden;
+            user-select: none;
         }
 
-        /* 1. 地圖區域 (底層) */
+        /* 1. 地圖區域 (底層) - 取消右方與下方拉桿 */
         .map-area {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            overflow: auto;
+            overflow: hidden;
             background-color: #1a1a1a;
             z-index: 1;
+            cursor: default;
         }
 
         .grid-map {
@@ -37,7 +39,7 @@
             margin: 100px auto;
             box-shadow: 0 0 20px rgba(0,0,0,0.8);
             transform-origin: center center;
-            transition: transform 0.1s ease-out;
+            transition: transform 0.05s ease-out;
         }
 
         .grid-cell {
@@ -180,6 +182,7 @@
             flex-direction: column;
             gap: 8px;
             margin-bottom: 10px;
+            cursor: context-menu;
         }
 
         .player-header {
@@ -193,7 +196,7 @@
             border: none;
             color: white;
             font-weight: bold;
-            width: 130px;
+            width: 100%;
             font-size: 14px;
             border-bottom: 1px dashed #555;
             padding: 2px;
@@ -202,17 +205,6 @@
             outline: none;
             border-bottom: 1px solid #4a6fa5;
         }
-
-        .remove-player-btn {
-            background: #5a1a1a;
-            color: white;
-            border: none;
-            padding: 3px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        .remove-player-btn:hover { background: #7a2222; }
 
         .player-stats {
             display: flex;
@@ -252,6 +244,30 @@
             text-align: center;
         }
         .action-btn:hover { background: #444; }
+
+        /* 右鍵彈出選單 */
+        .context-menu {
+            position: fixed;
+            background: #2d2d2d;
+            border: 1px solid #555;
+            border-radius: 4px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 400;
+            padding: 4px 0;
+            min-width: 100px;
+        }
+
+        .context-menu-item {
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .context-menu-item:hover {
+            background: #5a1a1a;
+        }
 
         /* 4. 狀態資訊 (右方) */
         .right-panel {
@@ -447,11 +463,14 @@
         <div class="panel-content">
             <h3>角色資訊</h3>
             <button class="action-btn" id="addPlayerBtn" style="margin-bottom: 12px;">增加玩家</button>
-            <div id="playerList">
-                <!-- 動態生成的玩家分格會在這裡顯示 -->
-            </div>
+            <div id="playerList"></div>
         </div>
         <button class="toggle-btn" onclick="togglePanel('leftPanel')">角色資訊</button>
+    </div>
+
+    <!-- 玩家卡片右鍵選單 -->
+    <div class="context-menu" id="playerContextMenu">
+        <div class="context-menu-item" id="contextRemovePlayer">剔除</div>
     </div>
 
     <!-- 右方：狀態資訊 -->
@@ -525,20 +544,20 @@
             panel.classList.toggle('open');
         }
 
-        // 3. 角色資訊：增加與剃除玩家功能
+        // 3. 角色資訊：增加玩家與右鍵彈窗剔除功能
         const addPlayerBtn = document.getElementById('addPlayerBtn');
         const playerList = document.getElementById('playerList');
-        let playerCount = 0;
+        const playerContextMenu = document.getElementById('playerContextMenu');
+        let activePlayerCard = null;
 
         addPlayerBtn.addEventListener('click', () => {
-            playerCount++;
+            const currentCount = playerList.children.length;
             const playerCard = document.createElement('div');
             playerCard.className = 'player-card';
 
             playerCard.innerHTML = `
                 <div class="player-header">
-                    <input type="text" class="player-name-input" value="玩家 ${playerCount}">
-                    <button class="remove-player-btn">剃除</button>
+                    <input type="text" class="player-name-input" value="玩家 ${currentCount + 1}">
                 </div>
                 <div class="player-stats">
                     <label>HP: <input type="number" class="stat-input" value="100"></label>
@@ -546,20 +565,68 @@
                 </div>
             `;
 
-            // 綁定剃除按鈕事件
-            const removeBtn = playerCard.querySelector('.remove-player-btn');
-            removeBtn.addEventListener('click', () => {
-                playerCard.remove();
+            // 綁定右鍵事件
+            playerCard.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                activePlayerCard = playerCard;
+                playerContextMenu.style.display = 'block';
+                playerContextMenu.style.left = `${e.clientX}px`;
+                playerContextMenu.style.top = `${e.clientY}px`;
             });
 
             playerList.appendChild(playerCard);
         });
 
-        // 4. 地圖縮放與重設功能
+        // 右鍵選單點擊剔除
+        document.getElementById('contextRemovePlayer').addEventListener('click', () => {
+            if (activePlayerCard) {
+                activePlayerCard.remove();
+                activePlayerCard = null;
+            }
+            playerContextMenu.style.display = 'none';
+        });
+
+        // 點擊其他地方關閉右鍵選單
+        window.addEventListener('click', () => {
+            playerContextMenu.style.display = 'none';
+        });
+
+        // 4. 地圖拖曳平移、縮放與重設功能
         const mapArea = document.getElementById('mapArea');
         let currentScale = 1.0;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let startX, startY;
         const minScale = 0.4;
         const maxScale = 2.5;
+
+        function updateMapTransform() {
+            mapContainer.style.transform = `translate(${panX}px, ${panY}px) scale(${currentScale})`;
+        }
+
+        mapArea.addEventListener('mousedown', (e) => {
+            if (e.button === 0) { // 左鍵拖曳
+                isDragging = true;
+                startX = e.clientX - panX;
+                startY = e.clientY - panY;
+                mapArea.style.cursor = 'grabbing';
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            panX = e.clientX - startX;
+            panY = e.clientY - startY;
+            updateMapTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                mapArea.style.cursor = 'default';
+            }
+        });
 
         mapArea.addEventListener('wheel', (e) => {
             e.preventDefault();
@@ -570,13 +637,15 @@
                 currentScale -= 0.1;
                 if (currentScale < minScale) currentScale = minScale;
             }
-            mapContainer.style.transform = `scale(${currentScale})`;
+            updateMapTransform();
         }, { passive: false });
 
         const resetMapBtn = document.getElementById('resetMapBtn');
         resetMapBtn.addEventListener('click', () => {
             currentScale = 1.0;
-            mapContainer.style.transform = `scale(${currentScale})`;
+            panX = 0;
+            panY = 0;
+            updateMapTransform();
         });
 
         // 5. GM 工具列按鍵彈出視窗與上傳預覽功能
