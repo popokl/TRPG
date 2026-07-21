@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>私人 TRPG 平台 - 浮動版面</title>
+    <title>私人 TRPG 平台</title>
     <style>
-        /* 重置預設與全局樣式 */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -16,19 +15,18 @@
             font-family: "Microsoft JhengHei", sans-serif;
             background-color: #121212;
             color: #ffffff;
-            overflow: hidden; /* 防止整個網頁出現預期的滾動條 */
+            overflow: hidden;
         }
 
-        /* ========== 1. 地圖區域 (底層) ========== */
+        /* 1. 地圖區域 (底層) */
         .map-area {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            overflow: auto; /* 當地圖大於螢幕時允許滾動 */
+            overflow: auto;
             background-color: #1a1a1a;
-            z-index: 1; /* 設定在最底層 */
+            z-index: 1;
         }
 
-        /* 50x50 地圖網格本身 */
         .grid-map {
             display: grid;
             grid-template-columns: repeat(50, 40px);
@@ -36,7 +34,7 @@
             background-color: #222;
             border: 1px solid #555;
             width: fit-content;
-            margin: 100px auto; /* 讓地圖置中並與邊緣保持距離 */
+            margin: 100px auto;
             box-shadow: 0 0 20px rgba(0,0,0,0.8);
         }
 
@@ -51,45 +49,53 @@
             cursor: pointer;
         }
 
-        /* ========== 浮動 UI 通用設定 ========== */
+        /* 浮動 UI 通用設定 */
         .floating-ui {
             position: fixed;
-            z-index: 100; /* 確保浮浮在圖層之上 */
+            z-index: 100;
             border: 1px solid #444;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
         }
 
-        /* ========== 2. 玩家工具列 (上方置中縮小) ========== */
+        /* 2. 玩家工具列 (上方) */
         .toolbar {
             top: 15px;
             left: 50%;
-            transform: translateX(-50%); /* 完美置中 */
-            background: rgba(45, 45, 45, 0.9);
-            padding: 10px 25px;
-            border-radius: 30px;
+            transform: translateX(-50%);
+            background: rgba(45, 45, 45, 0.95);
+            padding: 10px 20px;
+            border-radius: 20px;
             display: flex;
-            gap: 15px;
+            gap: 10px;
             align-items: center;
+        }
+
+        .toolbar-title {
+            font-weight: bold;
+            margin-right: 5px;
+            color: #ccc;
+            font-size: 14px;
         }
 
         .toolbar button {
             background: #333;
             color: white;
             border: 1px solid #555;
-            padding: 5px 15px;
-            border-radius: 15px;
+            padding: 6px 12px;
+            border-radius: 6px;
             cursor: pointer;
+            font-size: 14px;
         }
         .toolbar button:hover { background: #555; }
 
-        /* ========== 側邊面板通用設定 ========== */
+        /* 側邊面板通用設定 */
         .side-panel {
             top: 50%;
             display: flex;
             align-items: stretch;
             background: rgba(30, 30, 30, 0.95);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* 平滑滑動動畫 */
-            border-radius: 10px;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 8px;
         }
 
         .panel-content {
@@ -102,60 +108,59 @@
             margin-bottom: 15px;
             border-bottom: 1px solid #555;
             padding-bottom: 5px;
+            font-size: 16px;
         }
 
-        /* 側邊開關按鈕 */
         .toggle-btn {
             width: 40px;
             background: #4a6fa5;
             border: none;
             color: white;
             cursor: pointer;
-            font-size: 20px;
+            font-size: 14px;
+            writing-mode: vertical-lr;
+            letter-spacing: 2px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         .toggle-btn:hover { background: #5c85c2; }
 
-        /* ========== 3. 角色資訊 (左方) ========== */
+        /* 3. 角色資訊 (左方) */
         .left-panel {
             left: 0;
-            /* 預設隱藏內容，只露出 40px 的按鈕。Y軸置中 (-50%) */
             transform: translate(calc(-100% + 40px), -50%);
             border-top-left-radius: 0;
             border-bottom-left-radius: 0;
         }
         .left-panel.open {
-            transform: translate(0, -50%); /* 點擊後滑出 */
+            transform: translate(0, -50%);
         }
         .left-panel .toggle-btn {
-            border-top-right-radius: 10px;
-            border-bottom-right-radius: 10px;
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
         }
 
-        /* ========== 4. 狀態資訊 (右方) ========== */
+        /* 4. 狀態資訊 (右方) */
         .right-panel {
             right: 0;
-            /* 預設隱藏內容，只露出 40px 的按鈕 */
             transform: translate(calc(100% - 40px), -50%);
             border-top-right-radius: 0;
             border-bottom-right-radius: 0;
         }
         .right-panel.open {
-            transform: translate(0, -50%); /* 點擊後滑出 */
+            transform: translate(0, -50%);
         }
         .right-panel .toggle-btn {
-            border-top-left-radius: 10px;
-            border-bottom-left-radius: 10px;
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
         }
 
-        /* ========== 5. GM 工具 (下方浮動/滑鼠移入展開) ========== */
+        /* 5. GM 工具 (下方) */
         .gm-panel {
             bottom: 0;
             left: 50%;
-            /* 預設隱藏，只露出 30px 高的 Trigger 箭頭 */
-            transform: translate(-50%, calc(100% - 30px)); 
+            transform: translate(-50%, calc(100% - 30px));
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
@@ -165,20 +170,20 @@
             background: transparent;
         }
 
-        /* 滑鼠移上去時，往上滑出完整視窗 */
         .gm-panel:hover {
             transform: translate(-50%, 0);
         }
 
         .gm-trigger {
-            background: #8b0000;
-            border: 1px solid #ff4444;
+            background: #5a1a1a;
+            border: 1px solid #883333;
             border-bottom: none;
             color: white;
             height: 30px;
             padding: 0 40px;
-            border-radius: 10px 10px 0 0;
+            border-radius: 8px 8px 0 0;
             cursor: pointer;
+            font-size: 14px;
             font-weight: bold;
             display: flex;
             align-items: center;
@@ -187,17 +192,40 @@
         }
 
         .gm-content {
-            background: rgba(74, 35, 35, 0.95);
-            border: 1px solid #ff4444;
+            background: rgba(60, 25, 25, 0.95);
+            border: 1px solid #883333;
             border-bottom: none;
             width: 600px;
-            height: 200px;
+            height: 180px;
             padding: 20px;
-            border-radius: 10px 10px 0 0;
+            border-radius: 8px 8px 0 0;
             box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5);
         }
 
-        /* 權限控制隱藏 */
+        .gm-content h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #773333;
+            padding-bottom: 4px;
+        }
+
+        .gm-buttons {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+        }
+
+        .gm-buttons button {
+            background: #4a2323;
+            color: white;
+            border: 1px solid #884444;
+            padding: 10px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .gm-buttons button:hover { background: #6b3333; }
+
         .hidden {
             display: none !important;
         }
@@ -205,24 +233,25 @@
 </head>
 <body>
 
-    <!-- 1. 底層：地圖區域 -->
+    <!-- 底層：地圖區域 -->
     <main class="map-area">
-        <div class="grid-map" id="map">
-            <!-- 網格由 JavaScript 動態生成 -->
-        </div>
+        <div class="grid-map" id="map"></div>
     </main>
 
-    <!-- 2. 上方：玩家工具列 -->
+    <!-- 上方：玩家工具列 -->
     <div class="floating-ui toolbar">
-        <span>⚔️ 玩家工具列</span>
-        <button>🎲 擲骰</button>
-        <button>📏 測量距離</button>
+        <span class="toolbar-title">玩家工具列</span>
+        <button>擲骰</button>
+        <button>移動角色</button>
+        <button>測量路徑</button>
+        <button>技能範圍</button>
+        <button>畫筆</button>
     </div>
 
-    <!-- 3. 左方：角色資訊 (按鈕點擊展開) -->
+    <!-- 左方：角色資訊 -->
     <div class="floating-ui side-panel left-panel" id="leftPanel">
         <div class="panel-content">
-            <h3>👤 角色資訊</h3>
+            <h3>角色資訊</h3>
             <p>HP: 100 / 100</p>
             <p>MP: 50 / 50</p>
             <br>
@@ -230,34 +259,36 @@
             <p>敏捷: 14</p>
             <p>智力: 10</p>
         </div>
-        <button class="toggle-btn" onclick="togglePanel('leftPanel')">👤</button>
+        <button class="toggle-btn" onclick="togglePanel('leftPanel')">角色資訊</button>
     </div>
 
-    <!-- 4. 右方：狀態資訊 (按鈕點擊展開) -->
+    <!-- 右方：狀態資訊 -->
     <div class="floating-ui side-panel right-panel" id="rightPanel">
-        <button class="toggle-btn" onclick="togglePanel('rightPanel')">📜</button>
+        <button class="toggle-btn" onclick="togglePanel('rightPanel')">狀態資訊</button>
         <div class="panel-content">
-            <h3>📜 狀態與紀錄</h3>
+            <h3>狀態與紀錄</h3>
             <p>[系統] 遊戲開始</p>
-            <p>[玩家1] 擲出了 18</p>
-            <p>[GM] 哥布林出現了！</p>
+            <p>[玩家] 擲出了 18</p>
         </div>
     </div>
 
-    <!-- 5. 下方：GM 工具 (滑鼠移入自動展開) -->
+    <!-- 下方：GM 工具 -->
     <div class="floating-ui gm-panel" id="gmPanel">
-        <div class="gm-trigger">⏶ GM 專屬工具 ⏶</div>
+        <div class="gm-trigger">GM 工具列</div>
         <div class="gm-content">
-            <h3>👑 GM 控制台</h3>
-            <p>這裡只有 GM 看得到，而且滑鼠移開就會自動縮下去。</p>
-            <br>
-            <button style="padding:5px;">+ 生成怪物</button>
-            <button style="padding:5px;">切換地圖</button>
+            <h3>GM 控制台</h3>
+            <div class="gm-buttons">
+                <button>地圖</button>
+                <button>角色</button>
+                <button>敵人</button>
+                <button>道具</button>
+                <button>狀態</button>
+                <button>筆記</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // --- 初始化 50x50 地圖 ---
         const mapContainer = document.getElementById('map');
         const MAP_SIZE = 50;
         const TOTAL_CELLS = MAP_SIZE * MAP_SIZE;
@@ -271,25 +302,19 @@
             cell.dataset.x = x;
             cell.dataset.y = y;
 
-            // 測試：點擊印出座標
             cell.addEventListener('click', () => {
-                console.log(`你點擊了座標 X:${x}, Y:${y}`);
+                console.log(`點擊座標 X:${x}, Y:${y}`);
             });
 
             mapContainer.appendChild(cell);
         }
 
-        // --- 側邊面板展開/收合控制 ---
         function togglePanel(panelId) {
             const panel = document.getElementById(panelId);
-            // 透過切換 'open' class 來觸發 CSS 的 transform 滑動
             panel.classList.toggle('open');
         }
 
-        // --- 權限控制 (GM 判定) ---
-        // 這裡設定為 true，你可以改為 false 看看玩家視角（下方 GM 工具會消失）
         const isGM = true; 
-
         if (!isGM) {
             document.getElementById('gmPanel').classList.add('hidden');
         }
