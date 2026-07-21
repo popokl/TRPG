@@ -1,65 +1,70 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8"><meta name="robots" content="noindex, nofollow"><title>TRPG</title>
-    <!-- 1. 引入置中縮小浮動列、黑框白字與獨佔視窗的精簡外觀樣式庫 -->
-    <link rel="stylesheet" href="https://jsdelivr.net">
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="robots" content="noindex, nofollow"><title>TRPG</title>
+<style>
+    html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#555;font-family:sans-serif;color:#fff;display:flex;flex-direction:column;}
+    .bar{display:flex;gap:12px;padding:10px 20px;background:#2a2a2a;box-shadow:0 2px 5px rgba(0,0,0,0.3);z-index:10;align-items:center;}
+    .main-content{flex:1;display:flex;flex-direction:row;width:100vw;overflow:hidden;position:relative;}
+    .left-sidebar{width:180px;background:#222;padding:20px 15px;display:flex;flex-direction:column;gap:15px;box-shadow:2px 0 5px rgba(0,0,0,0.3);z-index:9;box-sizing:border-box;}
+    .sidebar-item{display:flex;flex-direction:column;gap:5px;font-size:14px;}
+    input{background:#333;color:#fff;border:1px solid #555;padding:6px;border-radius:4px;box-sizing:border-box;width:100%;}
+    button,.upload-btn{background:#4a90e2;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-weight:bold;white-space:nowrap;font-size:14px;display:inline-block;}
+    .map-container{flex:1;position:relative;overflow:hidden;display:flex;justify-content:center;align-items:center;background:#444;user-select:none;}
+    #mapWrapper{position:absolute;width:min(calc(100vw - 220px),calc(100vh - 100px));height:min(calc(100vw - 220px),calc(100vh - 100px));background:#dddddd;background-size:100% 100%;background-repeat:no-repeat;background-position:center;border:2px solid #222;box-shadow:0 0 25px rgba(0,0,0,0.5);transform-origin:center center;will-change:transform;}
+    .grid-layer{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;}
+    .token{position:absolute;width:6%;height:6%;border-radius:50%;cursor:move;z-index:2;background-size:cover;background-position:center;box-shadow:0 4px 8px rgba(0,0,0,0.5);top:10px;left:10px;}
+    .player-token{border:3px solid #2ecc71;}.enemy-token{border:3px solid #e74c3c;}
+    .status-marker{position:absolute;width:4%;height:4%;border-radius:4px;border:2px solid #3498db;cursor:move;z-index:3;background-size:cover;background-position:center;box-shadow:0 3px 6px rgba(0,0,0,0.5);top:15px;left:15px;}
+    .bottom-float{position:absolute;bottom:0;left:50%;transform:translate(-50%,calc(100% - 24px));z-index:100;display:flex;flex-direction:column;align-items:center;transition:transform 0.25s ease;}
+    .arrow-trigger{background:#2a2a2a;color:#fff;padding:2px 20px;font-size:14px;font-weight:bold;border-radius:6px 6px 0 0;cursor:pointer;width:auto;text-align:center;}
+    .bottom-bar{height:45px;overflow:hidden;border-radius:6px 6px 0 0;border:1px solid #444;border-bottom:none;display:flex;gap:10px;padding:10px 20px;background:#2a2a2a;}
+    .bottom-float:hover{transform:translate(-50%,0);} .bottom-float:hover .arrow-trigger{opacity:0;pointer-events:none;}
+    .btn-black-white{background:#1a1a1a;color:#fff;border:1px solid #fff;padding:6px 16px;transition:background 0.2s,color 0.2s;font-weight:bold;cursor:pointer;}
+    .btn-black-white:hover{background:#fff;color:#1a1a1a;}
+    .modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#222;border:1px solid #555;border-radius:8px;padding:15px;box-shadow:0 10px 30px rgba(0,0,0,0.6);z-index:200;display:none;width:320px;max-height:70vh;flex-direction:column;gap:12px;}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #444;padding-bottom:6px;font-weight:bold;color:#4a90e2;}
+    .modal-close{cursor:pointer;font-weight:bold;color:#aaa;font-size:16px;border:none;background:none;}
+    .modal-body{overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px;}
+    .preview-box{display:flex;flex-wrap:wrap;gap:8px;background:#1a1a1a;padding:8px;border-radius:4px;min-height:60px;box-sizing:border-box;}
+    .p-item{width:40px;height:40px;border:1px solid #666;cursor:pointer;background-size:cover;background-position:center;border-radius:4px;}
+    .p-token{border-radius:50%;border:2px solid #aaa;}
+    #ctxMenu{position:fixed;display:none;background:#2a2a2a;border:1px solid #555;padding:5px 0;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,0.5);z-index:1000;font-size:14px;}
+    .ctx-item{padding:6px 20px;cursor:pointer;color:#ff6b6b;white-space:nowrap;} .ctx-item:hover{background:#4a90e2;color:#fff;}
+    .reset-zoom-btn{position:fixed;bottom:20px;right:20px;background:#2a2a2a;color:#fff;border:1px solid #555;width:35px;height:35px;border-radius:50%;font-size:18px;font-weight:bold;cursor:pointer;display:flex;justify-content:center;align-items:center;z-index:101;box-shadow:0 2px 5px rgba(0,0,0,0.3);}
+</style>
 </head>
 <body>
-    <!-- 右下角獨立居中復原按鈕 -->
-    <button class="reset-zoom-btn" id="btnResetZoom">⟳</button>
-
-    <!-- 上方：捷徑擲骰檢定工具列 -->
-    <div class="bar">
-        <span style="font-weight:bold;">擲骰檢定：</span>
-        <button onclick="rollDice(100)">D100</button><button onclick="rollDice(20)" style="background:#27ae60;">D20</button><button onclick="rollDice(10)" style="background:#d35400;">D10</button><button onclick="rollDice(6)" style="background:#8e44ad;">D6</button><button onclick="rollDice(4)" style="background:#2980b9;">D4</button>
-        <span id="diceOutput" style="color:#ffcc00;font-weight:bold;margin-left:10px;">等待擲骰...</span>
-    </div>
-
-    <!-- 中間：左側純粹角色資訊與中央 50x50 戰術地圖 -->
-    <div class="main-content">
-        <div class="left-sidebar">
-            <h3 style="margin:0;border-bottom:1px solid #444;padding-bottom:5px;color:#4a90e2;font-size:16px;">角色資訊</h3>
-            <div class="sidebar-item"><label>角色姓名：</label><input type="text" id="charName" oninput="saveData()"></div>
-            <div class="sidebar-item"><label>目前血量 (HP) ：</label><input type="number" id="charHP" value="10" oninput="saveData()"></div>
-            <div class="sidebar-item"><label>理智值 (SAN) ：</label><input type="number" id="charSAN" value="50" oninput="saveData()"></div>
-        </div>
-        <div class="map-container" id="mapContainer">
-            <div id="mapWrapper">
-                <svg class="grid-layer" viewBox="0 0 500 500" xmlns="http://w3.org">
-                    <defs><pattern id="trpg-grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 L 0 10" fill="none" stroke="rgba(0,0,0,0.65)" stroke-width="1.2"/></pattern></defs>
-                    <rect width="500" height="500" fill="url(#trpg-grid)" stroke="rgba(0,0,0,0.65)" stroke-width="1.2" />
-                </svg>
-            </div>
-        </div>
-    </div>
-
-    <!-- 下方：黑框白字浮動快捷面板 -->
-    <div class="bottom-float">
-        <div class="arrow-trigger">▲</div>
-        <div class="bar bottom-bar">
-            <button class="btn-black-white" onclick="openModal('modalMap')">地圖</button><button class="btn-black-white" onclick="openModal('modalToken')">棋子</button><button class="btn-black-white" onclick="openModal('modalStatus')">狀態</button>
-        </div>
-    </div>
-
-    <!-- 三大整合跳轉資產管理視窗區 -->
-    <div class="modal" id="modalMap">
-        <div class="modal-header"><span>地圖庫</span><button class="modal-close" onclick="closeModal('modalMap')">X</button></div>
-        <div class="modal-body"><label class="upload-btn" for="mapUpload" style="background:#e67e22;text-align:center;">上傳地圖</label><input type="file" id="mapUpload" accept="image/*" style="display:none;" onchange="handleUpload(event,'map')"><div class="preview-box" id="mapPreviewArea"></div></div>
-    </div>
-    <div class="modal" id="modalToken">
-        <div class="modal-header"><span>棋子庫</span><button class="modal-close" onclick="closeModal('modalToken')">X</button></div>
-        <div class="modal-body"><label class="upload-btn" for="tokenUpload" style="background:#2ecc71;text-align:center;">上傳棋子</label><input type="file" id="tokenUpload" accept="image/*" style="display:none;" onchange="handleUpload(event,'token')"><div class="preview-box" id="tokenPreviewArea"></div></div>
-    </div>
-    <div class="modal" id="modalStatus">
-        <div class="modal-header"><span>狀態庫</span><button class="modal-close" onclick="closeModal('modalStatus')">X</button></div>
-        <div class="modal-body"><label class="upload-btn" for="statusUpload" style="background:#3498db;text-align:center;">上傳狀態</label><input type="file" id="statusUpload" accept="image/*" style="display:none;" onchange="handleUpload(event,'status')"><div class="preview-box" id="statusPreviewArea"></div></div>
-    </div>
-
-    <!-- 自訂右鍵刪除選單 -->
-    <div id="ctxMenu"><div class="ctx-item" id="ctxDelBtn">刪除</div></div>
-
-    <!-- 2. 引入大容量 IndexedDB、滾輪平移、棋子拖曳、自動覆蓋與全功能預覽右鍵刪除的核心引擎 -->
-    <script src="https://jsdelivr.net"></script>
-</body>
-</html>
+<button class="reset-zoom-btn" id="btnResetZoom">⟳</button>
+<div class="bar"><span style="font-weight:bold;">擲骰檢定：</span><button onclick="rollDice(100)">D100</button><button onclick="rollDice(20)" style="background:#27ae60;">D20</button><button onclick="rollDice(10)" style="background:#d35400;">D10</button><button onclick="rollDice(6)" style="background:#8e44ad;">D6</button><button onclick="rollDice(4)" style="background:#2980b9;">D4</button><span id="diceOutput" style="color:#ffcc00;font-weight:bold;margin-left:10px;">等待擲骰...</span></div>
+<div class="main-content"><div class="left-sidebar"><h3 style="margin:0;border-bottom:1px solid #444;padding-bottom:5px;color:#4a90e2;font-size:16px;">角色資訊</h3><div class="sidebar-item"><label>角色姓名：</label><input type="text" id="charName" oninput="saveData()"></div><div class="sidebar-item"><label>目前血量 (HP) ：</label><input type="number" id="charHP" value="10" oninput="saveData()"></div><div class="sidebar-item"><label>理智值 (SAN) ：</label><input type="number" id="charSAN" value="50" oninput="saveData()"></div></div>
+<div class="map-container" id="mapContainer"><div id="mapWrapper"><svg class="grid-layer" viewBox="0 0 500 500" xmlns="http://w3.org"><defs><pattern id="trpg-grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 L 0 10" fill="none" stroke="rgba(0,0,0,0.65)" stroke-width="1.2"/></pattern></defs><rect width="500" height="500" fill="url(#trpg-grid)" stroke="rgba(0,0,0,0.65)" stroke-width="1.2" /></svg></div></div></div>
+<div class="bottom-float"><div class="arrow-trigger">▲</div><div class="bar bottom-bar"><button class="btn-black-white" onclick="openModal('modalMap')">地圖</button><button class="btn-black-white" onclick="openModal('modalToken')">棋子</button><button class="btn-black-white" onclick="openModal('modalStatus')">狀態</button></div></div>
+<div class="modal" id="modalMap"><div class="modal-header"><span>地圖庫</span><button class="modal-close" onclick="closeModal('modalMap')">X</button></div><div class="modal-body"><label class="upload-btn" for="mapUpload" style="background:#e67e22;text-align:center;">上傳地圖</label><input type="file" id="mapUpload" accept="image/*" style="display:none;" onchange="handleUpload(event,'map')"><div class="preview-box" id="mapPreviewArea"></div></div></div>
+<div class="modal" id="modalToken"><div class="modal-header"><span>棋子庫</span><button class="modal-close" onclick="closeModal('modalToken')">X</button></div><div class="modal-body"><label class="upload-btn" for="tokenUpload" style="background:#2ecc71;text-align:center;">上傳棋子</label><input type="file" id="tokenUpload" accept="image/*" style="display:none;" onchange="handleUpload(event,'token')"><div class="preview-box" id="tokenPreviewArea"></div></div></div>
+<div class="modal" id="modalStatus"><div class="modal-header"><span>狀態庫</span><button class="modal-close" onclick="closeModal('modalStatus')">X</button></div><div class="modal-body"><label class="upload-btn" for="statusUpload" style="background:#3498db;text-align:center;">上傳狀態</label><input type="file" id="statusUpload" accept="image/*" style="display:none;" onchange="handleUpload(event,'status')"><div class="preview-box" id="statusPreviewArea"></div></div></div>
+<div id="ctxMenu"><div class="ctx-item" id="ctxDelBtn">刪除</div></div>
+<script>
+    let scale=1,posX=0,posY=0,isDragging=!1,startX,startY,activeItem=null,db=null;const mapContainer=document.getElementById('mapContainer'),mapWrapper=document.getElementById('mapWrapper'),ctxMenu=document.getElementById('ctxMenu'),dbRequest=indexedDB.open("TRPG_VTT_DB",1);
+    dbRequest.onupgradeneeded=e=>{e.target.result.createObjectStore("assets",{keyPath:"id"});};dbRequest.onsuccess=e=>{db=e.target.result;loadDB();};
+    window.onload=function(){if(localStorage.getItem("trpg_name"))document.getElementById("charName").value=localStorage.getItem("trpg_name");if(localStorage.getItem("trpg_hp"))document.getElementById("charHP").value=localStorage.getItem("trpg_hp");if(localStorage.getItem("trpg_san"))document.getElementById("charSAN").value=localStorage.getItem("trpg_san");initControls();document.getElementById('btnResetZoom').onclick=resetZoom;window.onclick=()=>ctxMenu.style.display='none';};
+    function saveDB(i,d){if(db)db.transaction("assets","readwrite").objectStore("assets").put({id:i,data:d});}function deleteDB(i){if(db)db.transaction("assets","readwrite").objectStore("assets").delete(i);}
+    function loadDB(){if(!db)return;db.transaction("assets","readonly").objectStore("assets").openCursor().onsuccess=e=>{let c=e.target.result;if(c){let k=c.value.id,v=c.value.data;if(k==="bg")mapWrapper.style.backgroundImage=`url('${v}')`;else renderPreview(v,k.split('_')[0],k);c.continue();}};}
+    function openModal(i){['modalMap','modalToken','modalStatus'].forEach(m=>document.getElementById(m).style.display='none');document.getElementById(i).style.display='flex';}function closeModal(i){document.getElementById(i).style.display='none';}
+    function initControls(){
+        function e(e){e.preventDefault();scale=Math.max(0.4,Math.min(6,scale+((e.deltaY?-e.deltaY:e.wheelDelta)>0?0.1:-0.1))),mapWrapper.style.transform=`translate(${posX}px, ${posY}px) scale(${scale})`;}
+        mapContainer.addEventListener('wheel',e,{passive:!1}),mapContainer.addEventListener('mousewheel',e,{passive:!1});
+        mapContainer.onmousedown=e=>{if(e.target!==mapContainer&&e.target!==mapWrapper&&!e.target.classList.contains('grid-layer'))return;isDragging=!0;startX=e.clientX-posX;startY=e.clientY-posY;};
+        window.onmousemove=e=>{if(isDragging){posX=e.clientX-startX;posY=e.clientY-startY;mapWrapper.style.transform=`translate(${posX}px, ${posY}px) scale(${scale})`;}};window.onmouseup=()=>{isDragging=!1;};
+    }
+    function resetZoom(){scale=1;posX=0;posY=0;mapWrapper.style.transform=`translate(0px,0px) scale(1)`;}function saveData(){localStorage.setItem("trpg_name",document.getElementById("charName").value),localStorage.setItem("trpg_hp",document.getElementById("charHP").value),localStorage.setItem("trpg_san",document.getElementById("charSAN").value);}
+    function handleUpload(evt,type){const f=evt.target.files;if(f.length){const r=new FileReader();r.onload=function(e){const d=e.target.result;if(type==='map'){mapWrapper.style.backgroundImage=`url('${d}')`;saveDB("bg",d);}let uid=type+"_"+Date.now();saveDB(uid,d);renderPreview(d,type,uid);};r.readAsDataURL(f);}}
+    function renderPreview(d,t,u){
+        const b=document.createElement('div');b.className='p-item '+(t==='token'?'p-token':'');b.style.backgroundImage=`url('${d}')`;b.dataset.id=u;
+        b.onclick=function(){if(t==='map'){mapWrapper.style.backgroundImage=`url('${d}')`;saveDB("bg",d);}else if(t==='token'){const c=confirm("確定：玩家（綠）\n取消：敵人（紅）");spawn(d,c?'token player-token':'token enemy-token');}else spawn(d,'status-marker');};
+        b.oncontextmenu=function(e){e.preventDefault();e.stopPropagation();activeItem=b;ctxMenu.style.left=`${e.clientX}px`;ctxMenu.style.top=`${e.clientY}px`;ctxMenu.style.display='block';};document.getElementById(t+'PreviewArea').appendChild(b);
+    }
+    document.getElementById('ctxDelBtn').onclick=function(){if(activeItem){let uid=activeItem.dataset.id;deleteDB(uid);if(uid.startsWith('map')){db.transaction("assets","readonly").objectStore("assets").get("bg").onsuccess=e=>{if(e.target.result&&e.target.result.data===activeItem.style.backgroundImage.replace(/^url\(['"]?(.+?)['"]?\)$/,'$1')){mapWrapper.style.backgroundImage="none";deleteDB("bg");}};}activeItem.remove();activeItem=null;}};
+    function spawn(d,c){
+        const n=document.createElement('div'); n.className=c; n.style.backgroundImage=`url('${d}')`; let dg=!1,tX=0,tY=0;n.onmousedown=e=>{e.stopPropagation();dg=!0;tX=e.clientX-n.offsetLeft;tY=e.clientY-n.offsetTop;};
+        window.onmousemove=e=>{if(dg){n.style.left=`${e.clientX-tX}px`;n.style.top=`${e.clientY-tY}px`;}};window.onmouseup=()=>{dg=!1;};mapWrapper.appendChild(n);
+    }
+    function rollDice(e){document.getElementById("diceOutput").innerText=`D${e} 結果 ➔ ${Math.floor(Math.random()*e)+1}`;}document.querySelectorAll('.upload-btn').forEach(e=>{e.onmousedown=e=>e.stopPropagation();});
+</script></body></html>
