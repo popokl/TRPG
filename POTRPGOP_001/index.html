@@ -16,37 +16,28 @@
         .map-container { flex:1; position:relative; overflow:hidden; display:flex; justify-content:center; align-items:center; background:#444; user-select:none; }
         #mapWrapper { position:absolute; width:min(calc(100vw - 220px),calc(100vh - 100px)); height:min(calc(100vw - 220px),calc(100vh - 100px)); background-color:#dddddd; background-size:100% 100%; background-repeat:no-repeat; background-position:center; border:2px solid #222; box-shadow:0 0 25px rgba(0,0,0,0.5); transform-origin:center center; will-change:transform; }
         .grid-layer { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1; }
-        
         .token { position:absolute; width:6%; height:6%; border-radius:50%; cursor:move; z-index:2; background-size:cover; background-position:center; box-shadow:0 4px 8px rgba(0,0,0,0.5); top:10px; left:10px; }
         .player-token { border:3px solid #2ecc71; }
         .enemy-token { border:3px solid #e74c3c; }
         .status-marker { position:absolute; width:4%; height:4%; border-radius:4px; border:2px solid #3498db; cursor:move; z-index:3; background-size:cover; background-position:center; box-shadow:0 3px 6px rgba(0,0,0,0.5); top:15px; left:15px; }
-        
-        .sub-section { display:flex; align-items:center; gap:8px; border-right:1px solid #444; padding-right:15px; }
-        .sub-section:last-child { border-right:none; }
-        
         .bottom-float { position:absolute; bottom:0; left:50%; transform:translate(-50%, calc(100% - 24px)); z-index:100; display:flex; flex-direction:column; align-items:center; transition:transform 0.25s ease; }
         .arrow-trigger { background:#2a2a2a; color:#fff; padding:2px 20px; font-size:14px; font-weight:bold; border-radius:6px 6px 0 0; cursor:pointer; width:auto; text-align:center; }
         .bottom-bar { height:45px; overflow:hidden; border-radius:6px 6px 0 0; border:1px solid #444; border-bottom:none; display:flex; gap:10px; padding:10px 20px; background:#2a2a2a; }
         .bottom-float:hover { transform:translate(-50%, 0); }
         .bottom-float:hover .arrow-trigger { opacity:0; pointer-events:none; }
-
         .btn-black-white { background: #1a1a1a; color: #ffffff; border: 1px solid #ffffff; padding: 6px 16px; transition: background 0.2s, color 0.2s; }
         .btn-black-white:hover { background: #ffffff; color: #1a1a1a; }
-        
         .modal { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#222; border:1px solid #555; border-radius:8px; padding:15px; box-shadow:0 10px 30px rgba(0,0,0,0.6); z-index:200; display:none; width:320px; max-height:70vh; flex-direction:column; gap:12px; }
         .modal-header { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #444; padding-bottom:6px; font-weight:bold; color:#4a90e2; }
         .modal-header span { flex:1; }
         .modal-close { cursor:pointer; font-weight:bold; color:#aaa; font-size:16px; border:none; background:none; padding:0 5px; }
         .modal-close:hover { color:#fff; }
         .modal-body { overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:10px; }
-        
         .preview-box { display:flex; flex-wrap:wrap; gap:8px; background:#1a1a1a; padding:8px; border-radius:4px; min-height:60px; box-sizing:border-box; }
         .p-map-item, .p-status-item { width:45px; height:40px; border:1px solid #666; cursor:pointer; background-size:cover; background-position:center; border-radius:4px; }
         .p-map-item:hover, .p-status-item:hover { border-color:#4a90e2; }
         .p-token-item { width:40px; height:40px; border-radius:50%; cursor:pointer; background-size:cover; background-position:center; box-shadow:0 2px 4px rgba(0,0,0,0.3); border:2px solid #aaa; }
         .p-token-item:hover { border-color:#4a90e2; }
-        
         #ctxMenu { position:fixed; display:none; background:#2a2a2a; border:1px solid #555; padding:5px 0; border-radius:4px; box-shadow:0 2px 10px rgba(0,0,0,0.5); z-index:1000; font-size:14px; }
         .ctx-item { padding:6px 20px; cursor:pointer; white-space:nowrap; }
         .ctx-item:hover { background:#4a90e2; }
@@ -65,7 +56,6 @@
         <button onclick="rollDice(4)" style="background:#2980b9;">D4</button>
         <span id="diceOutput" style="color:#ffcc00;font-weight:bold;margin-left:10px;">等待擲骰...</span>
     </div>
-    
     <div class="main-content">
         <div class="left-sidebar">
             <h3 style="margin:0 0 5px 0;border-bottom:1px solid #444;padding-bottom:5px;color:#4a90e2;font-size:16px;">角色資訊</h3>
@@ -82,7 +72,6 @@
             </div>
         </div>
     </div>
-
     <div class="bottom-float">
         <div class="arrow-trigger">▲</div>
         <div class="bar bottom-bar">
@@ -91,7 +80,6 @@
             <button class="btn-black-white" onclick="openModal('modalStatus')">狀態</button>
         </div>
     </div>
-
     <div class="modal" id="modalMap">
         <div class="modal-header"><span>地圖管理庫</span><button class="modal-close" onclick="closeModal('modalMap')">X</button></div>
         <div class="modal-body">
@@ -100,7 +88,6 @@
             <div class="preview-box" id="mapPreviewArea"></div>
         </div>
     </div>
-
     <div class="modal" id="modalToken">
         <div class="modal-header"><span>棋子資源庫</span><button class="modal-close" onclick="closeModal('modalToken')">X</button></div>
         <div class="modal-body">
@@ -109,7 +96,6 @@
             <div class="preview-box" id="tokenPreviewArea"></div>
         </div>
     </div>
-
     <div class="modal" id="modalStatus">
         <div class="modal-header"><span>狀態標記庫</span><button class="modal-close" onclick="closeModal('modalStatus')">X</button></div>
         <div class="modal-body">
@@ -118,41 +104,45 @@
             <div class="preview-box" id="statusPreviewArea"></div>
         </div>
     </div>
-
-    <!-- 右鍵選單：將原先「刪除圖片」改為更通用的「刪除項目」 -->
     <div id="ctxMenu"><div class="ctx-item" id="ctxDelBtn" style="color:#ff6b6b;">刪除</div></div>
     <script>
-        let scale=1,posX=0,posY=0,isDragging=!1,startX,startY,activeItem=null,activeType=null;
+        let scale=1,posX=0,posY=0,isDragging=!1,startX,startY,activeItem=null,activeType=null,db=null;
         const mapContainer=document.getElementById('mapContainer'),mapWrapper=document.getElementById('mapWrapper'),ctxMenu=document.getElementById('ctxMenu');
 
-        let savedMaps = JSON.parse(localStorage.getItem("trpg_map_list")) || [];
-        let savedTokens = JSON.parse(localStorage.getItem("trpg_token_list")) || [];
-        let savedStatuses = JSON.parse(localStorage.getItem("trpg_status_list")) || [];
+        const dbRequest = indexedDB.open("TRPG_VTT_Database", 1);
+        dbRequest.onupgradeneeded = function(e) {
+            let activeDb = e.target.result;
+            if(!activeDb.objectStoreNames.contains("assets")) activeDb.createObjectStore("assets", { keyPath: "id" });
+        };
+        dbRequest.onsuccess = function(e) { db = e.target.result; loadAllAssetsFromDB(); };
 
         window.onload=function(){
             if(localStorage.getItem("trpg_name"))document.getElementById("charName").value=localStorage.getItem("trpg_name");
             if(localStorage.getItem("trpg_hp"))document.getElementById("charHP").value=localStorage.getItem("trpg_hp");
             if(localStorage.getItem("trpg_san"))document.getElementById("charSAN").value=localStorage.getItem("trpg_san");
-            
-            const s=localStorage.getItem("trpg_map_bg");
-            if(s)mapWrapper.style.backgroundImage=`url('${s}')`;
-            
-            savedMaps.forEach(data => renderMapPreview(data));
-            savedTokens.forEach(data => renderTokenPreview(data));
-            savedStatuses.forEach(data => renderStatusPreview(data));
-
             initMapControls();
             document.getElementById('btnResetZoom').addEventListener('click', resetZoom);
             window.addEventListener('click',()=>ctxMenu.style.display='none');
         };
 
-        // 【核心修正】開啟視窗時，自動迴圈關閉其他所有視窗，確保獨佔不重疊
-        function openModal(id) { 
-            ['modalMap', 'modalToken', 'modalStatus'].forEach(mId => {
-                document.getElementById(mId).style.display = 'none';
-            });
-            document.getElementById(id).style.display = 'flex'; 
+        function saveAssetToDB(id, data) { if(db) db.transaction("assets", "readwrite").objectStore("assets").put({ id: id, data: data }); }
+        function deleteAssetFromDB(id) { if(db) db.transaction("assets", "readwrite").objectStore("assets").delete(id); }
+
+        function loadAllAssetsFromDB() {
+            db.transaction("assets", "readonly").objectStore("assets").openCursor().onsuccess = function(e) {
+                let cursor = e.target.result;
+                if(cursor) {
+                    let k = cursor.value.id, v = cursor.value.data;
+                    if(k === "current_map_bg") mapWrapper.style.backgroundImage = `url('${v}')`;
+                    else if(k.startsWith("map_")) renderMapPreview(v, k);
+                    else if(k.startsWith("token_")) renderTokenPreview(v, k);
+                    else if(k.startsWith("status_")) renderStatusPreview(v, k);
+                    cursor.continue();
+                }
+            };
         }
+
+        function openModal(id) { ['modalMap', 'modalToken', 'modalStatus'].forEach(mId => document.getElementById(mId).style.display = 'none'); document.getElementById(id).style.display = 'flex'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         function initMapControls(){
@@ -167,104 +157,78 @@
         }
 
         function updateTransform(){mapWrapper.style.transform=`translate(${posX}px, ${posY}px) scale(${scale})`;}
-        function resetZoom(){scale=1,posX=0,posY=0,updateTransform();}
+        function resetZoom(){scale=1; posX=0; posY=0; updateTransform();}
         function saveData(){localStorage.setItem("trpg_name",document.getElementById("charName").value),localStorage.setItem("trpg_hp",document.getElementById("charHP").value),localStorage.setItem("trpg_san",document.getElementById("charSAN").value);}
 
-        // 通用的右鍵選單呼叫器
-        function bindContextMenu(element, type, dataString) {
+        function bindContextMenu(element, type, uniqueId) {
             element.oncontextmenu = function(e) {
-                e.preventDefault(); e.stopPropagation();
-                activeItem = element; activeType = type; element.dataset.raw = dataString;
+                e.preventDefault(); e.stopPropagation(); activeItem = element; activeType = type; element.dataset.id = uniqueId;
                 ctxMenu.style.left = `${e.clientX}px`; ctxMenu.style.top = `${e.clientY}px`; ctxMenu.style.display = 'block';
             };
         }
 
-        // 地圖庫上傳與預覽
         function uploadMap(evt){
-            const mapFiles=evt.target.files;
-            if(mapFiles.length){
-                const mapReader=new FileReader();
-                mapReader.onload=function(e){
-                    const data=e.target.result; mapWrapper.style.backgroundImage=`url('${data}')`;
-                    try{
-                        localStorage.setItem("trpg_map_bg",data); savedMaps.push(data);
-                        localStorage.setItem("trpg_map_list", JSON.stringify(savedMaps));
-                    }catch(err){}
-                    renderMapPreview(data);
-                };
-                mapReader.readAsDataURL(mapFiles[0]);
+            const files=evt.target.files;
+            if(files.length){
+                const r=new FileReader();
+                r.onload=function(e){
+                    const d=e.target.result; mapWrapper.style.backgroundImage=`url('${d}')`;
+                    let uid = "map_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
+                    saveAssetToDB("current_map_bg", d); saveAssetToDB(uid, d); renderMapPreview(d, uid);
+                }; r.readAsDataURL(files[0]);
             }
         }
-        function renderMapPreview(data) {
+        function renderMapPreview(data, uid) {
             const box=document.createElement('div'); box.className='p-map-item'; box.style.backgroundImage=`url('${data}')`;
-            box.onclick=function(){mapWrapper.style.backgroundImage=`url('${data}')`; localStorage.setItem("trpg_map_bg",data);};
-            bindContextMenu(box, 'map', data);
-            document.getElementById('mapPreviewArea').appendChild(box);
+            box.onclick=function(){mapWrapper.style.backgroundImage=`url('${data}')`; saveAssetToDB("current_map_bg", data);};
+            bindContextMenu(box, 'map', uid); document.getElementById('mapPreviewArea').appendChild(box);
         }
 
-        // 棋子庫上傳與預覽
         function uploadToken(evt){
-            const tokenFiles=evt.target.files;
-            if(tokenFiles.length){
-                const tokenReader=new FileReader();
-                tokenReader.onload=function(e){
-                    const data=e.target.result;
-                    try { savedTokens.push(data); localStorage.setItem("trpg_token_list", JSON.stringify(savedTokens)); } catch(err){}
-                    renderTokenPreview(data);
-                };
-                tokenReader.readAsDataURL(tokenFiles[0]);
+            const files=evt.target.files;
+            if(files.length){
+                const r=new FileReader();
+                r.onload=function(e){
+                    const d=e.target.result; let uid = "token_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
+                    saveAssetToDB(uid, d); renderTokenPreview(d, uid);
+                }; r.readAsDataURL(files[0]);
             }
         }
-        function renderTokenPreview(data) {
+        function renderTokenPreview(data, uid) {
             const box=document.createElement('div'); box.className='p-token-item'; box.style.backgroundImage=`url('${data}')`;
             box.onclick=function(){
-                const choice = confirm("點擊「確定」召喚為 玩家棋子（綠框）\n點擊「取消」召喚為 敵人棋子（紅框）");
-                if(choice) { spawnToken(data, 'player-token'); } else { spawnToken(data, 'enemy-token'); }
+                const c = confirm("確定：召喚為 玩家棋子（綠框）\n取消：召喚為 敵人棋子（紅框）");
+                if(c) { spawnToken(data, 'player-token'); } else { spawnToken(data, 'enemy-token'); }
             };
-            bindContextMenu(box, 'token', data);
-            document.getElementById('tokenPreviewArea').appendChild(box);
+            bindContextMenu(box, 'token', uid); document.getElementById('tokenPreviewArea').appendChild(box);
         }
 
-        // 狀態庫上傳與預覽
         function uploadStatus(evt){
-            const statusFiles=evt.target.files;
-            if(statusFiles.length){
-                const statusReader=new FileReader();
-                statusReader.onload=function(e){
-                    const data=e.target.result;
-                    try { savedStatuses.push(data); localStorage.setItem("trpg_status_list", JSON.stringify(savedStatuses)); } catch(err){}
-                    renderStatusPreview(data);
-                };
-                statusReader.readAsDataURL(statusFiles[0]);
+            const files=evt.target.files;
+            if(files.length){
+                const r=new FileReader();
+                r.onload=function(e){
+                    const d=e.target.result; let uid = "status_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
+                    saveAssetToDB(uid, d); renderStatusPreview(d, uid);
+                }; r.readAsDataURL(files[0]);
             }
         }
-        function renderStatusPreview(data) {
+        function renderStatusPreview(data, uid) {
             const box=document.createElement('div'); box.className='p-status-item'; box.style.backgroundImage=`url('${data}')`;
             box.onclick=function(){ spawnStatusMarker(data); };
-            bindContextMenu(box, 'status', data);
-            document.getElementById('statusPreviewArea').appendChild(box);
+            bindContextMenu(box, 'status', uid); document.getElementById('statusPreviewArea').appendChild(box);
         }
 
-        // 【核心修正】右鍵點擊「刪除」時，自動依據類型剔除記憶快取，達成全預覽庫支援右鍵刪除
         document.getElementById('ctxDelBtn').onclick=function(){
             if(activeItem && activeType){
-                ctxMenu.style.display='none';
-                const rawData = activeItem.dataset.raw;
-                
+                ctxMenu.style.display='none'; let uid = activeItem.dataset.id; deleteAssetFromDB(uid);
                 if(activeType === 'map') {
-                    savedMaps = savedMaps.filter(url => url !== rawData);
-                    localStorage.setItem("trpg_map_list", JSON.stringify(savedMaps));
-                    if(localStorage.getItem("trpg_map_bg") === rawData) {
-                        mapWrapper.style.backgroundImage = "none"; localStorage.removeItem("trpg_map_bg");
-                    }
-                } else if(activeType === 'token') {
-                    savedTokens = savedTokens.filter(url => url !== rawData);
-                    localStorage.setItem("trpg_token_list", JSON.stringify(savedTokens));
-                } else if(activeType === 'status') {
-                    savedStatuses = savedStatuses.filter(url => url !== rawData);
-                    localStorage.setItem("trpg_status_list", JSON.stringify(savedStatuses));
+                    db.transaction("assets", "readonly").objectStore("assets").get("current_map_bg").onsuccess = function(e) {
+                        let cBg = e.target.result ? e.target.result.data : null;
+                        let dBg = activeItem.style.backgroundImage.replace(/^url\(['"]?(.+?)['"]?\)$/, '$1');
+                        if(cBg === dBg || (cBg && cBg.includes(dBg))) { mapWrapper.style.backgroundImage = "none"; deleteAssetFromDB("current_map_bg"); }
+                    };
                 }
-                
                 activeItem.remove(); activeItem=null; activeType=null;
             }
         };
@@ -274,8 +238,7 @@
             let dragging=!1,tX=0,tY=0;
             n.addEventListener('mousedown',e=>{e.stopPropagation(),dragging=!0,tX=e.clientX-n.offsetLeft,tY=e.clientY-n.offsetTop;});
             window.addEventListener('mousemove',e=>{dragging&&(n.style.left=`${e.clientX-tX}px`,n.style.top=`${e.clientY-tY}px`);});
-            window.addEventListener('mouseup',()=>{dragging=!1;});
-            mapWrapper.appendChild(n);
+            window.addEventListener('mouseup',()=>{dragging=!1;}); mapWrapper.appendChild(n);
         }
 
         function spawnStatusMarker(data){
@@ -283,10 +246,8 @@
             let dragging=!1,tX=0,tY=0;
             n.addEventListener('mousedown',e=>{e.stopPropagation(),dragging=!0,tX=e.clientX-n.offsetLeft,tY=e.clientY-n.offsetTop;});
             window.addEventListener('mousemove',e=>{dragging&&(n.style.left=`${e.clientX-tX}px`,n.style.top=`${e.clientY-tY}px`);});
-            window.addEventListener('mouseup',()=>{dragging=!1;});
-            mapWrapper.appendChild(n);
+            window.addEventListener('mouseup',()=>{dragging=!1;}); mapWrapper.appendChild(n);
         }
-        
         function rollDice(e){document.getElementById("diceOutput").innerText=`D${e} 結果 ➔ ${Math.floor(Math.random()*e)+1}`;}
         document.querySelectorAll('.upload-btn').forEach(e=>{e.addEventListener('mousedown',e=>e.stopPropagation());});
     </script>
