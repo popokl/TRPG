@@ -126,9 +126,11 @@
         }
 
         .panel-content {
-            width: 250px;
+            width: 280px;
             padding: 20px;
-            min-height: 300px;
+            min-height: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
         }
 
         .panel-content h3 {
@@ -167,6 +169,89 @@
             border-top-right-radius: 8px;
             border-bottom-right-radius: 8px;
         }
+
+        /* 角色卡片樣式 */
+        .player-card {
+            background: #222;
+            border: 1px solid #444;
+            padding: 10px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .player-name-input {
+            background: transparent;
+            border: none;
+            color: white;
+            font-weight: bold;
+            width: 130px;
+            font-size: 14px;
+            border-bottom: 1px dashed #555;
+            padding: 2px;
+        }
+        .player-name-input:focus {
+            outline: none;
+            border-bottom: 1px solid #4a6fa5;
+        }
+
+        .remove-player-btn {
+            background: #5a1a1a;
+            color: white;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .remove-player-btn:hover { background: #7a2222; }
+
+        .player-stats {
+            display: flex;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .player-stats label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stat-input {
+            width: 60px;
+            background: #1a1a1a;
+            color: white;
+            border: 1px solid #555;
+            padding: 3px;
+            border-radius: 3px;
+            text-align: center;
+        }
+        .stat-input:focus {
+            outline: none;
+            border-color: #4a6fa5;
+        }
+
+        .action-btn {
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+            text-align: center;
+        }
+        .action-btn:hover { background: #444; }
 
         /* 4. 狀態資訊 (右方) */
         .right-panel {
@@ -361,12 +446,10 @@
     <div class="floating-ui side-panel left-panel" id="leftPanel">
         <div class="panel-content">
             <h3>角色資訊</h3>
-            <p>HP: 100 / 100</p>
-            <p>MP: 50 / 50</p>
-            <br>
-            <p>力量: 15</p>
-            <p>敏捷: 14</p>
-            <p>智力: 10</p>
+            <button class="action-btn" id="addPlayerBtn" style="margin-bottom: 12px;">增加玩家</button>
+            <div id="playerList">
+                <!-- 動態生成的玩家分格會在這裡顯示 -->
+            </div>
         </div>
         <button class="toggle-btn" onclick="togglePanel('leftPanel')">角色資訊</button>
     </div>
@@ -377,7 +460,7 @@
         <div class="panel-content">
             <h3>狀態與紀錄</h3>
             <p>[系統] 遊戲開始</p>
-            <p>[玩家] 擲出了 18</p>
+            <p>[玩家] 擲過了 18</p>
         </div>
     </div>
 
@@ -442,7 +525,37 @@
             panel.classList.toggle('open');
         }
 
-        // 3. 地圖縮放與重設功能
+        // 3. 角色資訊：增加與剃除玩家功能
+        const addPlayerBtn = document.getElementById('addPlayerBtn');
+        const playerList = document.getElementById('playerList');
+        let playerCount = 0;
+
+        addPlayerBtn.addEventListener('click', () => {
+            playerCount++;
+            const playerCard = document.createElement('div');
+            playerCard.className = 'player-card';
+
+            playerCard.innerHTML = `
+                <div class="player-header">
+                    <input type="text" class="player-name-input" value="玩家 ${playerCount}">
+                    <button class="remove-player-btn">剃除</button>
+                </div>
+                <div class="player-stats">
+                    <label>HP: <input type="number" class="stat-input" value="100"></label>
+                    <label>MP: <input type="number" class="stat-input" value="50"></label>
+                </div>
+            `;
+
+            // 綁定剃除按鈕事件
+            const removeBtn = playerCard.querySelector('.remove-player-btn');
+            removeBtn.addEventListener('click', () => {
+                playerCard.remove();
+            });
+
+            playerList.appendChild(playerCard);
+        });
+
+        // 4. 地圖縮放與重設功能
         const mapArea = document.getElementById('mapArea');
         let currentScale = 1.0;
         const minScale = 0.4;
@@ -466,7 +579,7 @@
             mapContainer.style.transform = `scale(${currentScale})`;
         });
 
-        // 4. GM 工具列按鍵彈出視窗與上傳預覽功能
+        // 5. GM 工具列按鍵彈出視窗與上傳預覽功能
         const gmModal = document.getElementById('gmModal');
         const modalTitle = document.getElementById('modalTitle');
         const closeModalBtn = document.getElementById('closeModalBtn');
@@ -479,7 +592,6 @@
             btn.addEventListener('click', () => {
                 const toolName = btn.getAttribute('data-tool');
                 modalTitle.textContent = `GM 工具 - ${toolName}管理`;
-                // 每次打開清空預覽
                 previewArea.innerHTML = '<span>圖片預覽區</span>';
                 fileInput.value = '';
                 gmModal.style.display = 'flex';
@@ -511,7 +623,7 @@
             }
         });
 
-        // 5. 權限控制
+        // 6. 權限控制
         const isGM = true; 
         if (!isGM) {
             document.getElementById('gmPanel').classList.add('hidden');
