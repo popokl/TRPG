@@ -19,6 +19,13 @@
             user-select: none;
         }
 
+        /* 鎖定未加入玩家的互動限制 */
+        .locked-for-unjoined {
+            pointer-events: none !important;
+            opacity: 0.4;
+            transition: opacity 0.3s;
+        }
+
         /* 1. 地圖區域 (底層) */
         .map-area {
             position: absolute;
@@ -218,28 +225,15 @@
             flex-direction: column;
             gap: 8px;
             margin-bottom: 10px;
-            cursor: context-menu;
         }
 
         .player-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-
-        .player-name-input {
-            background: transparent;
-            border: none;
-            color: white;
-            font-weight: bold;
-            width: 100%;
             font-size: 14px;
-            border-bottom: 1px dashed #555;
-            padding: 2px;
-        }
-        .player-name-input:focus {
-            outline: none;
-            border-bottom: 1px solid #4a6fa5;
+            font-weight: bold;
+            color: #ffcc00;
         }
 
         .player-stats {
@@ -278,10 +272,6 @@
             border-radius: 3px;
             text-align: center;
             font-weight: bold;
-        }
-        .stat-input:focus {
-            outline: none;
-            border-color: #4a6fa5;
         }
 
         .action-btn {
@@ -325,9 +315,6 @@
             color: #666;
             cursor: not-allowed;
             pointer-events: none;
-        }
-        .context-menu-item.disabled:hover {
-            background: transparent;
         }
 
         /* 4. 狀態資訊 (右方) */
@@ -527,6 +514,67 @@
             object-fit: cover;
         }
 
+        /* 角色卡視窗專用區塊樣式 */
+        .char-section-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            background: #222;
+            padding: 8px 12px;
+            border: 1px solid #444;
+            border-radius: 6px;
+        }
+        .char-section-row label {
+            font-weight: bold;
+            font-size: 14px;
+            width: 80px;
+        }
+        .char-section-row input, .char-section-row .display-box {
+            flex: 1;
+            background: #1a1a1a;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .char-group-box {
+            background: #222;
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 6px;
+        }
+        .char-group-box h4 {
+            font-size: 14px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+            color: #ccc;
+        }
+        .dropdown-menu-custom {
+            position: absolute;
+            background: #2d2d2d;
+            border: 1px solid #555;
+            border-radius: 4px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 500;
+            padding: 4px 0;
+            width: 140px;
+            right: 0;
+            top: 100%;
+        }
+        .dropdown-item-custom {
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #fff;
+        }
+        .dropdown-item-custom:hover {
+            background: #4a6fa5;
+        }
+
         .hidden { display: none !important; }
     </style>
 </head>
@@ -554,7 +602,8 @@
     <div class="floating-ui side-panel left-panel" id="leftPanel">
         <div class="panel-content">
             <h3>角色資訊</h3>
-            <button class="action-btn" id="addPlayerBtn" style="margin-bottom: 12px;">增加玩家</button>
+            <!-- 「加入」按鍵，僅玩家可見與點擊 -->
+            <button class="action-btn" id="joinBtn" style="margin-bottom: 12px;">加入</button>
             <div id="playerList"></div>
         </div>
         <button class="toggle-btn" onclick="togglePanel('leftPanel')">角色資訊</button>
@@ -615,6 +664,107 @@
         </div>
     </div>
 
+    <!-- 編輯角色卡視窗 (Modal) -->
+    <div class="modal-overlay" id="charModal">
+        <div class="modal-box" style="width: 550px; max-height: 85vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h3>編輯角色卡</h3>
+                <button class="modal-close-btn" id="closeCharModalBtn">&times;</button>
+            </div>
+            <div class="modal-body" style="overflow-y: auto; flex: 1; gap: 12px; padding-right: 5px;">
+                
+                <!-- 1. 名字 -->
+                <div class="char-section-row">
+                    <label>名字</label>
+                    <input type="text" id="inputCharName" value="冒險者" disabled>
+                    <button class="action-btn" id="editNameBtn" style="width: auto; padding: 4px 10px;">編輯</button>
+                </div>
+
+                <!-- 2. 種族 -->
+                <div class="char-section-row" style="position: relative;">
+                    <label>種族</label>
+                    <div id="displayRace" class="display-box">吸血鬼</div>
+                    <button class="action-btn" id="raceToggleBtn" style="width: auto; padding: 4px 10px;">選擇</button>
+                    <div class="dropdown-menu-custom" id="raceDropdown">
+                        <div class="dropdown-item-custom">吸血鬼</div>
+                        <div class="dropdown-item-custom">精靈</div>
+                        <div class="dropdown-item-custom">魔人</div>
+                        <div class="dropdown-item-custom">獸人</div>
+                        <div class="dropdown-item-custom">離群半獸人</div>
+                        <div class="dropdown-item-custom">矮人</div>
+                        <div class="dropdown-item-custom">半身人</div>
+                        <div class="dropdown-item-custom">龍裔</div>
+                    </div>
+                </div>
+
+                <!-- 3. 戰鬥職業 -->
+                <div class="char-section-row" style="position: relative;">
+                    <label>戰鬥職業</label>
+                    <div id="displayClass" class="display-box">聖盾衛</div>
+                    <button class="action-btn" id="classToggleBtn" style="width: auto; padding: 4px 10px;">選擇</button>
+                    <div class="dropdown-menu-custom" id="classDropdown">
+                        <div class="dropdown-item-custom">聖盾衛</div>
+                        <div class="dropdown-item-custom">野蠻鬥士</div>
+                        <div class="dropdown-item-custom">德魯伊</div>
+                        <div class="dropdown-item-custom">鬼浪侍</div>
+                        <div class="dropdown-item-custom">暗殺者</div>
+                        <div class="dropdown-item-custom">元素巫師</div>
+                        <div class="dropdown-item-custom">吟遊舞者</div>
+                        <div class="dropdown-item-custom">疫醫</div>
+                        <div class="dropdown-item-custom">萬靈賢者</div>
+                    </div>
+                </div>
+
+                <!-- 4. 數值 -->
+                <div class="char-group-box">
+                    <h4>數值</h4>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                        <div><label style="font-size:12px; display:block; margin-bottom:2px;">力量</label><input type="number" class="stat-input stat-field" value="10"></div>
+                        <div><label style="font-size:12px; display:block; margin-bottom:2px;">敏捷</label><input type="number" class="stat-input stat-field" value="10"></div>
+                        <div><label style="font-size:12px; display:block; margin-bottom:2px;">體質</label><input type="number" class="stat-input stat-field" value="10"></div>
+                        <div><label style="font-size:12px; display:block; margin-bottom:2px;">智力</label><input type="number" class="stat-input stat-field" value="10"></div>
+                        <div><label style="font-size:12px; display:block; margin-bottom:2px;">感知</label><input type="number" class="stat-input stat-field" value="10"></div>
+                        <div><label style="font-size:12px; display:block; margin-bottom:2px;">魅力</label><input type="number" class="stat-input stat-field" value="10"></div>
+                    </div>
+                </div>
+
+                <!-- 5. 動作熟練值 -->
+                <div class="char-group-box">
+                    <h4>動作熟練值</h4>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                        <div><label style="font-size:11px; display:block; margin-bottom:2px;">運動</label><input type="number" class="stat-input prof-field" value="0"></div>
+                        <div><label style="font-size:11px; display:block; margin-bottom:2px;">特技</label><input type="number" class="stat-input prof-field" value="0"></div>
+                        <div><label style="font-size:11px; display:block; margin-bottom:2px;">巧手</label><input type="number" class="stat-input prof-field" value="0"></div>
+                        <div><label style="font-size:11px; display:block; margin-bottom:2px;">躲藏</label><input type="number" class="stat-input prof-field" value="0"></div>
+                        <div><label style="font-size:11px; display:block; margin-bottom:2px;">智慧</label><input type="number" class="stat-input prof-field" value="0"></div>
+                        <div><label style="font-size:11px; display:block; margin-bottom:2px;">奧術</label><input type="number" class="stat-input prof-field" value="0"></div>
+                        <div><label style="font-size:11px; display:block; margin-bottom:2px;">烹飪</label><input type="number" class="stat-input prof-field" value="0"></div>
+                        <div><label style="font-size:11px; display:block; margin-bottom:2px;">急救</label><input type="number" class="stat-input prof-field" value="0"></div>
+                        <div><label style="font-size:11px; display:block; margin-bottom:2px;">訓獸</label><input type="number" class="stat-input prof-field" value="0"></div>
+                        <div><label style="font-size:11px; display:block; margin-bottom:2px;">察覺</label><input type="number" class="stat-input prof-field" value="0"></div>
+                        <div><label style="font-size:11px; display:block; margin-bottom:2px;">調查</label><input type="number" class="stat-input prof-field" value="0"></div>
+                        <div><label style="font-size:11px; display:block; margin-bottom:2px;">求生</label><input type="number" class="stat-input prof-field" value="0"></div>
+                        <div><label style="font-size:11px; display:block; margin-bottom:2px;">表演</label><input type="number" class="stat-input prof-field" value="0"></div>
+                        <div><label style="font-size:11px; display:block; margin-bottom:2px;">說服</label><input type="number" class="stat-input prof-field" value="0"></div>
+                        <div><label style="font-size:11px; display:block; margin-bottom:2px;">威嚇</label><input type="number" class="stat-input prof-field" value="0"></div>
+                    </div>
+                </div>
+
+                <!-- 6. 物品 (20格，不可編輯) -->
+                <div class="char-group-box">
+                    <h4>物品 (20格)</h4>
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;" id="itemGridBox">
+                        <!-- 動態生成 20 格 -->
+                    </div>
+                </div>
+
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                <button class="modal-action-btn" id="charConfirmBtn" style="width: auto; padding: 6px 20px;">確認</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 地圖切換確認視窗 -->
     <div class="modal-overlay" id="mapConfirmModal">
         <div class="modal-box">
@@ -646,6 +796,10 @@
     </div>
 
     <script>
+        // 權限控制 (透過網址參數自動區分 GM 與玩家)
+        const urlParams = new URLSearchParams(window.location.search);
+        const isGM = urlParams.get('role') === 'gm'; 
+
         // 即時同步頻道設定
         const syncChannel = new BroadcastChannel('trpg_sync_channel');
 
@@ -686,27 +840,135 @@
             panel.classList.toggle('open');
         }
 
-        // 3. 角色資訊：增加玩家與右鍵彈窗剔除功能
-        const addPlayerBtn = document.getElementById('addPlayerBtn');
+        // 3. 玩家加入機制與角色卡互動邏輯
+        const joinBtn = document.getElementById('joinBtn');
         const playerList = document.getElementById('playerList');
         const playerContextMenu = document.getElementById('playerContextMenu');
+        const charModal = document.getElementById('charModal');
+        const closeCharModalBtn = document.getElementById('closeCharModalBtn');
+        const charConfirmBtn = document.getElementById('charConfirmBtn');
+        
         let activePlayerCard = null;
+        let isPlayerJoined = false;
 
-        addPlayerBtn.addEventListener('click', () => {
-            const currentCount = playerList.children.length + 1;
+        // 若為 GM，隱藏 GM 面板以外的加入按鈕；若為玩家，預設鎖定其他所有功能
+        if (isGM) {
+            document.getElementById('gmPanel').classList.remove('hidden');
+            if (joinBtn) joinBtn.style.display = 'none'; // GM 不需要加入按鈕
+        } else {
+            document.getElementById('gmPanel').classList.add('hidden');
+            // 玩家未加入前，鎖定地圖區域、上方工具列、右側面板
+            lockAllFeatures(true);
+        }
+
+        function lockAllFeatures(lock) {
+            const targets = [
+                document.getElementById('mapArea'),
+                document.querySelector('.toolbar'),
+                document.getElementById('rightPanel'),
+                document.getElementById('resetMapBtn')
+            ];
+            targets.forEach(el => {
+                if (el) {
+                    if (lock) {
+                        el.classList.add('locked-for-unjoined');
+                    } else {
+                        el.classList.remove('locked-for-unjoined');
+                    }
+                }
+            });
+        }
+
+        // 生成 20 格物品 (不可編輯)
+        const itemGridBox = document.getElementById('itemGridBox');
+        for (let i = 0; i < 20; i++) {
+            const itemBox = document.createElement('div');
+            itemBox.style.cssText = 'height: 35px; background: #151515; border: 1px solid #444; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #666;';
+            itemBox.textContent = i + 1;
+            itemGridBox.appendChild(itemBox);
+        }
+
+        // 點擊「加入」按鍵開啟編輯角色卡視窗
+        if (joinBtn) {
+            joinBtn.addEventListener('click', () => {
+                charModal.style.display = 'flex';
+            });
+        }
+
+        closeCharModalBtn.addEventListener('click', () => {
+            charModal.style.display = 'none';
+        });
+
+        // 名字編輯按鍵
+        const inputCharName = document.getElementById('inputCharName');
+        const editNameBtn = document.getElementById('editNameBtn');
+        editNameBtn.addEventListener('click', () => {
+            inputCharName.disabled = !inputCharName.disabled;
+            if (!inputCharName.disabled) inputCharName.focus();
+        });
+
+        // 種族下拉選單控制
+        const raceToggleBtn = document.getElementById('raceToggleBtn');
+        const raceDropdown = document.getElementById('raceDropdown');
+        const displayRace = document.getElementById('displayRace');
+
+        raceToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            raceDropdown.style.display = raceDropdown.style.display === 'block' ? 'none' : 'block';
+            classDropdown.style.display = 'none';
+        });
+
+        raceDropdown.querySelectorAll('.dropdown-item-custom').forEach(item => {
+            item.addEventListener('click', () => {
+                displayRace.textContent = item.textContent;
+                raceDropdown.style.display = 'none';
+            });
+        });
+
+        // 戰鬥職業下拉選單控制
+        const classToggleBtn = document.getElementById('classToggleBtn');
+        const classDropdown = document.getElementById('classDropdown');
+        const displayClass = document.getElementById('displayClass');
+
+        classToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            classDropdown.style.display = classDropdown.style.display === 'block' ? 'none' : 'block';
+            raceDropdown.style.display = 'none';
+        });
+
+        classDropdown.querySelectorAll('.dropdown-item-custom').forEach(item => {
+            item.addEventListener('click', () => {
+                displayClass.textContent = item.textContent;
+                classDropdown.style.display = 'none';
+            });
+        });
+
+        window.addEventListener('click', () => {
+            raceDropdown.style.display = 'none';
+            classDropdown.style.display = 'none';
+            playerContextMenu.style.display = 'none';
+            tokenContextMenu.style.display = 'none';
+        });
+
+        // 角色卡確認按鍵
+        charConfirmBtn.addEventListener('click', () => {
+            const name = inputCharName.value.trim() || '未命名冒險者';
+            const race = displayRace.textContent;
+            const charClass = displayClass.textContent;
+
+            // 建立玩家角色卡片顯示在左側面板
             const playerCard = document.createElement('div');
             playerCard.className = 'player-card';
-
             playerCard.innerHTML = `
                 <div class="player-header">
-                    <input type="text" class="player-name-input" value="玩家 ${currentCount}">
+                    <span>${name} (${race} / ${charClass})</span>
                 </div>
                 <div class="player-stats">
                     <div class="stat-box hp-box">
-                        <label>HP: <input type="number" class="stat-input" value="0"></label>
+                        <label>HP: <input type="number" class="stat-input" value="20"></label>
                     </div>
                     <div class="stat-box mp-box">
-                        <label>MP: <input type="number" class="stat-input" value="0"></label>
+                        <label>MP: <input type="number" class="stat-input" value="10"></label>
                     </div>
                     <div class="stat-box shield-box">
                         <label>護盾: <input type="number" class="stat-input" value="0"></label>
@@ -716,14 +978,29 @@
 
             playerCard.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
-                activePlayerCard = playerCard;
-                tokenContextMenu.style.display = 'none';
-                playerContextMenu.style.display = 'block';
-                playerContextMenu.style.left = `${e.clientX}px`;
-                playerContextMenu.style.top = `${e.clientY}px`;
+                if (isGM) {
+                    activePlayerCard = playerCard;
+                    tokenContextMenu.style.display = 'none';
+                    playerContextMenu.style.display = 'block';
+                    playerContextMenu.style.left = `${e.clientX}px`;
+                    playerContextMenu.style.top = `${e.clientY}px`;
+                }
             });
 
+            playerList.innerHTML = ''; // 限制每位玩家擁有自己的卡片
             playerList.appendChild(playerCard);
+
+            // 解除玩家功能鎖定
+            isPlayerJoined = true;
+            lockAllFeatures(false);
+            if (joinBtn) joinBtn.style.display = 'none'; // 加入後隱藏加入按鍵
+            charModal.style.display = 'none';
+
+            // 同步至其他畫面
+            syncChannel.postMessage({
+                type: 'ADD_PLAYER_CARD',
+                name, race, charClass
+            });
         });
 
         document.getElementById('contextRemovePlayer').addEventListener('click', () => {
@@ -732,11 +1009,6 @@
                 activePlayerCard = null;
             }
             playerContextMenu.style.display = 'none';
-        });
-
-        window.addEventListener('click', () => {
-            playerContextMenu.style.display = 'none';
-            tokenContextMenu.style.display = 'none';
         });
 
         // 4. 地圖拖曳平移、縮放與重設功能
@@ -828,7 +1100,6 @@
 
         gmButtons.forEach(btn => {
             const toolName = btn.getAttribute('data-tool');
-
             btn.addEventListener('click', () => {
                 currentToolCategory = toolName;
                 modalTitle.textContent = `素材庫 - ${toolName}`;
@@ -879,11 +1150,9 @@
         const tokenModalTitle = document.getElementById('tokenModalTitle');
 
         let selectedImageForAction = '';
-        let selectedCategoryForAction = '';
 
         function handleImageSelection(category, imgSrc) {
             selectedImageForAction = imgSrc;
-            selectedCategoryForAction = category;
 
             if (category === '地圖') {
                 mapPreviewArea.innerHTML = `<img src="${imgSrc}" alt="地圖預覽">`;
@@ -900,15 +1169,10 @@
         closeMapConfirmBtn.addEventListener('click', () => {
             mapConfirmModal.style.display = 'none';
         });
-        mapConfirmModal.addEventListener('click', (e) => {
-            if (e.target === mapConfirmModal) mapConfirmModal.style.display = 'none';
-        });
 
         mapConfirmSwitchBtn.addEventListener('click', () => {
             mapContainer.style.backgroundImage = `url('${selectedImageForAction}')`;
             mapConfirmModal.style.display = 'none';
-            
-            // 廣播地圖切換事件
             syncChannel.postMessage({ type: 'CHANGE_MAP', imgSrc: selectedImageForAction });
             alert('已成功切換網格地圖背景！');
         });
@@ -916,15 +1180,11 @@
         closeTokenModalBtn.addEventListener('click', () => {
             tokenModal.style.display = 'none';
         });
-        tokenModal.addEventListener('click', (e) => {
-            if (e.target === tokenModal) tokenModal.style.display = 'none';
-        });
 
         tokenConfirmBtn.addEventListener('click', () => {
             const tokenId = 'token_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
             createToken(tokenId, selectedImageForAction, 25 * 40, 25 * 40, 1, false);
             
-            // 廣播建立棋子事件
             syncChannel.postMessage({
                 type: 'CREATE_TOKEN',
                 id: tokenId,
@@ -983,7 +1243,6 @@
                     token.style.left = `${snappedX}px`;
                     token.style.top = `${snappedY}px`;
 
-                    // 廣播移動事件
                     syncChannel.postMessage({
                         type: 'MOVE_TOKEN',
                         id: tokenId,
@@ -1040,7 +1299,6 @@
                 token.style.width = `${newSize}px`;
                 token.style.height = `${newSize}px`;
 
-                // 廣播縮放事件
                 syncChannel.postMessage({
                     type: 'RESIZE_TOKEN',
                     id: tokenId,
@@ -1122,16 +1380,23 @@
                 if (token) {
                     token.remove();
                 }
+            } else if (data.type === 'ADD_PLAYER_CARD') {
+                // 同步其他玩家/GM 面板上的角色清單顯示
+                const playerCard = document.createElement('div');
+                playerCard.className = 'player-card';
+                playerCard.innerHTML = `
+                    <div class="player-header">
+                        <span>${data.name} (${data.race} / ${data.charClass})</span>
+                    </div>
+                    <div class="player-stats">
+                        <div class="stat-box hp-box"><label>HP: <input type="number" class="stat-input" value="20"></label></div>
+                        <div class="stat-box mp-box"><label>MP: <input type="number" class="stat-input" value="10"></label></div>
+                        <div class="stat-box shield-box"><label>護盾: <input type="number" class="stat-input" value="0"></label></div>
+                    </div>
+                `;
+                playerList.appendChild(playerCard);
             }
         };
-
-        // 9. 權限控制 (透過網址參數自動區分 GM 與玩家)
-        const urlParams = new URLSearchParams(window.location.search);
-        const isGM = urlParams.get('role') === 'gm'; 
-
-        if (!isGM) {
-            document.getElementById('gmPanel').classList.add('hidden');
-        }
     </script>
 </body>
 </html>
