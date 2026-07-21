@@ -415,10 +415,9 @@
         }
         .gm-buttons button:hover { background: #6b3333; }
 
-        /* GM 懸浮預覽視窗 (Hover Popup) */
+        /* GM 懸浮預覽視窗 (Hover Popup) - 調整為固定定位並顯示在按鍵下方 */
         .gm-hover-popup {
-            position: absolute;
-            bottom: 75px;
+            position: fixed;
             background: #2d2d2d;
             border: 1px solid #884444;
             border-radius: 6px;
@@ -426,7 +425,7 @@
             display: none;
             flex-wrap: wrap;
             gap: 8px;
-            z-index: 350;
+            z-index: 500;
             max-width: 300px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.8);
         }
@@ -606,11 +605,12 @@
                 <button data-tool="道具">道具</button>
                 <button data-tool="狀態">狀態</button>
                 <button data-tool="筆記">筆記</button>
-                <!-- 懸浮預覽視窗 -->
-                <div class="gm-hover-popup" id="gmHoverPopup"></div>
             </div>
         </div>
     </div>
+
+    <!-- 懸浮預覽視窗 (移至 body 根層以確保定位與滑鼠互動順暢) -->
+    <div class="gm-hover-popup" id="gmHoverPopup"></div>
 
     <!-- GM 上傳視窗 (Modal) -->
     <div class="modal-overlay" id="gmModal">
@@ -752,7 +752,7 @@
             playerContextMenu.style.display = 'none';
         });
 
-        // 4. 地圖拖曳平移、縮放與重設功能 (大幅增加縮小範圍)
+        // 4. 地圖拖曳平移、縮放與重設功能
         const mapArea = document.getElementById('mapArea');
         let currentScale = 1.0;
         let panX = 0;
@@ -767,7 +767,7 @@
         }
 
         mapArea.addEventListener('mousedown', (e) => {
-            if (e.button === 0 && e.target === mapArea) { // 左鍵拖曳背景
+            if (e.button === 0 && e.target === mapArea) {
                 isDragging = true;
                 startX = e.clientX - panX;
                 startY = e.clientY - panY;
@@ -809,7 +809,7 @@
             updateMapTransform();
         });
 
-        // 5. GM 工具列按鍵彈出視窗與上傳預覽、分類懸浮預覽、切換地圖與建立棋子功能
+        // 5. GM 工具列按鍵彈出視窗與上傳預覽、分類懸浮預覽 (支援順暢移動與下方點選)
         const gmModal = document.getElementById('gmModal');
         const modalTitle = document.getElementById('modalTitle');
         const closeModalBtn = document.getElementById('closeModalBtn');
@@ -822,39 +822,7 @@
 
         let currentToolCategory = '';
         let currentTempImageSrc = '';
-
-        // 點擊 GM 按鈕開啓上傳 Modal
-        gmButtons.forEach(btn => {
-            const toolName = btn.getAttribute('data-tool');
-
-            btn.addEventListener('click', () => {
-                currentToolCategory = toolName;
-                modalTitle.textContent = `GM 工具 - ${toolName}管理`;
-                previewArea.innerHTML = '<span>圖片預覽區</span>';
-                fileInput.value = '';
-                currentTempImageSrc = '';
-                gmModal.style.display = 'flex';
-                gmHoverPopup.style.display = 'none';
-            });
-
-            // 滑鼠移入按鍵跳出懸浮視窗預覽該分類圖片
-            btn.addEventListener('mouseenter', () => {
-                currentToolCategory = toolName;
-                renderHoverPopup(toolName);
-                gmHoverPopup.style.display = 'flex';
-            });
-
-            btn.addEventListener('mouseleave', (e) => {
-                // 如果移動到 hover popup 本身則不關閉
-                if (!gmHoverPopup.contains(e.relatedTarget)) {
-                    gmHoverPopup.style.display = 'none';
-                }
-            });
-        });
-
-        gmHoverPopup.addEventListener('mouseleave', () => {
-            gmHoverPopup.style.display = 'none';
-        });
+        let hoverTimeout = null;
 
         function renderHoverPopup(category) {
             gmHoverPopup.innerHTML = '';
@@ -873,6 +841,55 @@
                 gmHoverPopup.appendChild(img);
             });
         }
+
+        function showHoverPopup(btn, toolName) {
+            clearTimeout(hoverTimeout);
+            currentToolCategory = toolName;
+            renderHoverPopup(toolName);
+
+            // 定位在按鍵下方
+            const rect = btn.getBoundingClientRect();
+            gmHoverPopup.style.left = `${rect.left}px`;
+            gmHoverPopup.style.top = `${rect.bottom + 6}px`;
+            gmHoverPopup.style.display = 'flex';
+        }
+
+        function hideHoverPopupWithDelay() {
+            clearTimeout(hoverTimeout);
+            hoverTimeout = setTimeout(() => {
+                gmHoverPopup.style.display = 'none';
+            }, 150);
+        }
+
+        gmButtons.forEach(btn => {
+            const toolName = btn.getAttribute('data-tool');
+
+            btn.addEventListener('click', () => {
+                currentToolCategory = toolName;
+                modalTitle.textContent = `GM 工具 - ${toolName}管理`;
+                previewArea.innerHTML = '<span>圖片預覽區</span>';
+                fileInput.value = '';
+                currentTempImageSrc = '';
+                gmModal.style.display = 'flex';
+                gmHoverPopup.style.display = 'none';
+            });
+
+            btn.addEventListener('mouseenter', () => {
+                showHoverPopup(btn, toolName);
+            });
+
+            btn.addEventListener('mouseleave', () => {
+                hideHoverPopupWithDelay();
+            });
+        });
+
+        gmHoverPopup.addEventListener('mouseenter', () => {
+            clearTimeout(hoverTimeout);
+        });
+
+        gmHoverPopup.addEventListener('mouseleave', () => {
+            hideHoverPopupWithDelay();
+        });
 
         closeModalBtn.addEventListener('click', () => {
             gmModal.style.display = 'none';
@@ -975,12 +992,10 @@
         function createToken(imgSrc) {
             const token = document.createElement('div');
             token.className = 'map-token';
-            // 預設大小為 1 個網格大小 (40px)
             token.dataset.gridSize = 1; 
             token.style.width = '40px';
             token.style.height = '40px';
 
-            // 初始置中於地圖可視區中心附近
             token.style.left = `${(50 * 40 / 2) - 20}px`;
             token.style.top = `${(50 * 40 / 2) - 20}px`;
 
@@ -988,7 +1003,6 @@
             img.src = imgSrc;
             token.appendChild(img);
 
-            // 點擊選取棋子
             token.addEventListener('mousedown', (e) => {
                 e.stopPropagation();
                 if (activeToken && activeToken !== token) {
@@ -997,7 +1011,6 @@
                 activeToken = token;
                 token.classList.add('selected');
 
-                // 拖曳棋子邏輯
                 let shiftX = e.clientX - token.getBoundingClientRect().left;
                 let shiftY = e.clientY - token.getBoundingClientRect().top;
                 const mapRect = mapContainer.getBoundingClientRect();
@@ -1019,17 +1032,16 @@
                 }, { once: true });
             });
 
-            // 滾輪縮放：等比例每次一網格大小 (40px) 方式縮放
             token.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 let gridSize = parseInt(token.dataset.gridSize);
                 if (e.deltaY < 0) {
-                    gridSize += 1; // 放大一網格
-                    if (gridSize > 10) gridSize = 10; // 上限防爆
+                    gridSize += 1;
+                    if (gridSize > 10) gridSize = 10;
                 } else {
-                    gridSize -= 1; // 縮小一網格
-                    if (gridSize < 1) gridSize = 1; // 最小 1 網格
+                    gridSize -= 1;
+                    if (gridSize < 1) gridSize = 1;
                 }
                 token.dataset.gridSize = gridSize;
                 const newSize = gridSize * 40;
@@ -1040,7 +1052,6 @@
             mapContainer.appendChild(token);
         }
 
-        // 點擊地圖空白處取消棋子選取
         mapArea.addEventListener('click', (e) => {
             if (e.target === mapArea || e.target.classList.contains('grid-cell') || e.target.id === 'map') {
                 if (activeToken) {
