@@ -13,18 +13,18 @@
 
         body {
             font-family: "Microsoft JhengHei", sans-serif;
-            background-color: #121212;
+            background-color: #2b2b2b; /* 網頁背景改為深灰色 */
             color: #ffffff;
             overflow: hidden;
             user-select: none;
         }
 
-        /* 1. 地圖區域 (底層) - 取消右方與下方拉桿 */
+        /* 1. 地圖區域 (底層) */
         .map-area {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
             overflow: hidden;
-            background-color: #1a1a1a;
+            background-color: #222222;
             z-index: 1;
             cursor: default;
         }
@@ -34,10 +34,10 @@
             display: grid;
             grid-template-columns: repeat(50, 40px);
             grid-template-rows: repeat(50, 40px);
-            background-color: #222;
+            background-color: #333333;
             background-size: cover;
             background-position: center;
-            border: 1px solid #555;
+            border: 2px solid #000;
             width: fit-content;
             margin: 100px auto;
             box-shadow: 0 0 20px rgba(0,0,0,0.8);
@@ -47,7 +47,7 @@
 
         .grid-cell {
             background-color: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1.5px solid #000; /* 網格改為黑線，並稍微加粗 */
             width: 40px; height: 40px;
             transition: background-color 0.2s;
         }
@@ -70,6 +70,7 @@
             align-items: center;
             justify-content: center;
             background: #333;
+            transition: opacity 0.2s;
         }
         .map-token:active {
             cursor: grabbing;
@@ -77,6 +78,10 @@
         .map-token.selected {
             border-color: #ffcc00;
             box-shadow: 0 0 10px #ffcc00;
+        }
+        /* 瀕死狀態：半透明 */
+        .map-token.dying {
+            opacity: 0.4;
         }
         .map-token img {
             width: 100%;
@@ -238,7 +243,6 @@
             border-bottom: 1px solid #4a6fa5;
         }
 
-        /* 數值分隔群組 */
         .player-stats {
             display: flex;
             gap: 6px;
@@ -253,20 +257,9 @@
             flex: 1;
         }
 
-        .hp-box {
-            background-color: #ffcccc;
-            color: #333;
-        }
-
-        .mp-box {
-            background-color: #cce5ff;
-            color: #333;
-        }
-
-        .shield-box {
-            background-color: #d4edda;
-            color: #333;
-        }
+        .hp-box { background-color: #ffcccc; color: #333; }
+        .mp-box { background-color: #cce5ff; color: #333; }
+        .shield-box { background-color: #d4edda; color: #333; }
 
         .stat-box label {
             display: flex;
@@ -305,7 +298,7 @@
         }
         .action-btn:hover { background: #444; }
 
-        /* 右鍵彈出選單 */
+        /* 右鍵彈出選單共用 */
         .context-menu {
             position: fixed;
             background: #2d2d2d;
@@ -327,6 +320,16 @@
 
         .context-menu-item:hover {
             background: #5a1a1a;
+        }
+
+        /* 停用選單項目樣式 */
+        .context-menu-item.disabled {
+            color: #666;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .context-menu-item.disabled:hover {
+            background: transparent;
         }
 
         /* 4. 狀態資訊 (右方) */
@@ -449,7 +452,7 @@
             padding: 5px;
         }
 
-        /* GM 互動視窗 (Modal) 樣式 */
+        /* 互動視窗 (Modal) 樣式 */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -478,9 +481,7 @@
             padding-bottom: 8px;
         }
 
-        .modal-header h3 {
-            font-size: 16px;
-        }
+        .modal-header h3 { font-size: 16px; }
 
         .modal-close-btn {
             background: transparent;
@@ -528,7 +529,6 @@
             object-fit: contain;
         }
 
-        /* 圓形裁切預覽專用 */
         .circular-preview-container {
             width: 150px;
             height: 150px;
@@ -544,9 +544,7 @@
             object-fit: cover;
         }
 
-        .hidden {
-            display: none !important;
-        }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -582,6 +580,13 @@
     <!-- 玩家卡片右鍵選單 -->
     <div class="context-menu" id="playerContextMenu">
         <div class="context-menu-item" id="contextRemovePlayer">剔除</div>
+    </div>
+
+    <!-- 棋子右鍵選單 -->
+    <div class="context-menu" id="tokenContextMenu">
+        <div class="context-menu-item" id="tokenContextDying">瀕死</div>
+        <div class="context-menu-item disabled" id="tokenContextRevive">復活</div>
+        <div class="context-menu-item" id="tokenContextRemove">剔除</div>
     </div>
 
     <!-- 右方：狀態資訊 -->
@@ -727,10 +732,10 @@
                 </div>
             `;
 
-            // 綁定右鍵事件
             playerCard.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 activePlayerCard = playerCard;
+                tokenContextMenu.style.display = 'none';
                 playerContextMenu.style.display = 'block';
                 playerContextMenu.style.left = `${e.clientX}px`;
                 playerContextMenu.style.top = `${e.clientY}px`;
@@ -739,7 +744,6 @@
             playerList.appendChild(playerCard);
         });
 
-        // 右鍵選單點擊剔除
         document.getElementById('contextRemovePlayer').addEventListener('click', () => {
             if (activePlayerCard) {
                 activePlayerCard.remove();
@@ -748,9 +752,9 @@
             playerContextMenu.style.display = 'none';
         });
 
-        // 點擊其他地方關閉右鍵選單
         window.addEventListener('click', () => {
             playerContextMenu.style.display = 'none';
+            tokenContextMenu.style.display = 'none';
         });
 
         // 4. 地圖拖曳平移、縮放與重設功能
@@ -810,7 +814,7 @@
             updateMapTransform();
         });
 
-        // 5. GM 工具列按鍵彈出視窗與上傳預覽、分類懸浮預覽
+        // 5. GM 工具列與懸浮視窗設定
         const gmPanel = document.getElementById('gmPanel');
         const gmModal = document.getElementById('gmModal');
         const modalTitle = document.getElementById('modalTitle');
@@ -827,7 +831,6 @@
         let hoverTimeout = null;
         let gmPanelTimeout = null;
 
-        // 保持 GM 工具列展開的狀態管理
         function keepGmPanelOpen() {
             clearTimeout(gmPanelTimeout);
             gmPanel.classList.add('force-open');
@@ -868,7 +871,6 @@
             currentToolCategory = toolName;
             renderHoverPopup(toolName);
 
-            // 定位在按鍵下方
             const rect = btn.getBoundingClientRect();
             gmHoverPopup.style.left = `${rect.left}px`;
             gmHoverPopup.style.top = `${rect.bottom + 6}px`;
@@ -938,7 +940,6 @@
             }
         });
 
-        // 點擊「確認」按鈕將圖片儲存至該分類
         uploadConfirmBtn.addEventListener('click', () => {
             if (currentTempImageSrc && currentToolCategory) {
                 gmImages[currentToolCategory].push(currentTempImageSrc);
@@ -980,7 +981,6 @@
             }
         }
 
-        // 地圖切換確認
         closeMapConfirmBtn.addEventListener('click', () => {
             mapConfirmModal.style.display = 'none';
         });
@@ -994,7 +994,6 @@
             alert('已成功切換網格地圖背景！');
         });
 
-        // 角色/敵人棋子建立確認
         closeTokenModalBtn.addEventListener('click', () => {
             tokenModal.style.display = 'none';
         });
@@ -1007,8 +1006,12 @@
             tokenModal.style.display = 'none';
         });
 
-        // 7. 棋子生成與互動/縮放功能
+        // 7. 棋子生成、貼齊網格移動與右鍵選單邏輯
         let activeToken = null;
+        const tokenContextMenu = document.getElementById('tokenContextMenu');
+        const tokenContextDying = document.getElementById('tokenContextDying');
+        const tokenContextRevive = document.getElementById('tokenContextRevive');
+        const tokenContextRemove = document.getElementById('tokenContextRemove');
 
         function createToken(imgSrc) {
             const token = document.createElement('div');
@@ -1017,14 +1020,19 @@
             token.style.width = '40px';
             token.style.height = '40px';
 
-            token.style.left = `${(50 * 40 / 2) - 20}px`;
-            token.style.top = `${(50 * 40 / 2) - 20}px`;
+            // 預設生成在地圖中央並貼齊網格 (例如格子 25, 25)
+            const defaultGridX = 25;
+            const defaultGridY = 25;
+            token.style.left = `${defaultGridX * 40}px`;
+            token.style.top = `${defaultGridY * 40}px`;
 
             const img = document.createElement('img');
             img.src = imgSrc;
             token.appendChild(img);
 
+            // 拖動與貼齊網格
             token.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return; // 僅處理左鍵拖曳
                 e.stopPropagation();
                 if (activeToken && activeToken !== token) {
                     activeToken.classList.remove('selected');
@@ -1036,23 +1044,53 @@
                 let shiftY = e.clientY - token.getBoundingClientRect().top;
                 const mapRect = mapContainer.getBoundingClientRect();
 
-                function moveAt(clientX, clientY) {
-                    let x = (clientX - mapRect.left - shiftX) / currentScale;
-                    let y = (clientY - mapRect.top - shiftY) / currentScale;
-                    token.style.left = `${x}px`;
-                    token.style.top = `${y}px`;
+                function onMouseMove(event) {
+                    let rawX = (event.clientX - mapRect.left - shiftX) / currentScale;
+                    let rawY = (event.clientY - mapRect.top - shiftY) / currentScale;
+                    
+                    // 以一格 (40px) 為單位吸附網格
+                    let snappedX = Math.round(rawX / 40) * 40;
+                    let snappedY = Math.round(rawY / 40) * 40;
+
+                    token.style.left = `${snappedX}px`;
+                    token.style.top = `${snappedY}px`;
                 }
 
-                function onMouseMove(event) {
-                    moveAt(event.clientX, event.clientY);
+                function onMouseUp() {
+                    document.removeEventListener('mousemove', onMouseMove);
                 }
 
                 document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', () => {
-                    document.removeEventListener('mousemove', onMouseMove);
-                }, { once: true });
+                document.addEventListener('mouseup', onMouseUp, { once: true });
             });
 
+            // 棋子右鍵選單事件
+            token.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (activeToken && activeToken !== token) {
+                    activeToken.classList.remove('selected');
+                }
+                activeToken = token;
+                token.classList.add('selected');
+                playerContextMenu.style.display = 'none';
+
+                // 根據當前是否為半透明狀態更新選項的可點擊性
+                const isDying = token.classList.contains('dying');
+                if (isDying) {
+                    tokenContextDying.classList.add('disabled');
+                    tokenContextRevive.classList.remove('disabled');
+                } else {
+                    tokenContextDying.classList.remove('disabled');
+                    tokenContextRevive.classList.add('disabled');
+                }
+
+                tokenContextMenu.style.display = 'block';
+                tokenContextMenu.style.left = `${e.clientX}px`;
+                tokenContextMenu.style.top = `${e.clientY}px`;
+            });
+
+            // 滾輪調整棋子尺寸
             token.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1072,6 +1110,29 @@
 
             mapContainer.appendChild(token);
         }
+
+        // 棋子右鍵選單各功能動作
+        tokenContextDying.addEventListener('click', () => {
+            if (activeToken && !tokenContextDying.classList.contains('disabled')) {
+                activeToken.classList.add('dying');
+            }
+            tokenContextMenu.style.display = 'none';
+        });
+
+        tokenContextRevive.addEventListener('click', () => {
+            if (activeToken && !tokenContextRevive.classList.contains('disabled')) {
+                activeToken.classList.remove('dying');
+            }
+            tokenContextMenu.style.display = 'none';
+        });
+
+        tokenContextRemove.addEventListener('click', () => {
+            if (activeToken) {
+                activeToken.remove();
+                activeToken = null;
+            }
+            tokenContextMenu.style.display = 'none';
+        });
 
         mapArea.addEventListener('click', (e) => {
             if (e.target === mapArea || e.target.classList.contains('grid-cell') || e.target.id === 'map') {
