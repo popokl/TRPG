@@ -13,7 +13,7 @@
 
         body {
             font-family: "Microsoft JhengHei", sans-serif;
-            background-color: #2b2b2b; /* 網頁背景改為深灰色 */
+            background-color: #2b2b2b;
             color: #ffffff;
             overflow: hidden;
             user-select: none;
@@ -47,7 +47,7 @@
 
         .grid-cell {
             background-color: transparent;
-            border: 1.5px solid #000; /* 網格改為黑線，並稍微加粗 */
+            border: 1.5px solid #000;
             width: 40px; height: 40px;
             transition: background-color 0.2s;
         }
@@ -79,7 +79,6 @@
             border-color: #ffcc00;
             box-shadow: 0 0 10px #ffcc00;
         }
-        /* 瀕死狀態：半透明 */
         .map-token.dying {
             opacity: 0.4;
         }
@@ -322,7 +321,6 @@
             background: #5a1a1a;
         }
 
-        /* 停用選單項目樣式 */
         .context-menu-item.disabled {
             color: #666;
             cursor: not-allowed;
@@ -419,39 +417,6 @@
         }
         .gm-buttons button:hover { background: #6b3333; }
 
-        /* GM 懸浮預覽視窗 (Hover Popup) */
-        .gm-hover-popup {
-            position: fixed;
-            background: #2d2d2d;
-            border: 1px solid #884444;
-            border-radius: 6px;
-            padding: 10px;
-            display: none;
-            flex-wrap: wrap;
-            gap: 8px;
-            z-index: 500;
-            max-width: 300px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.8);
-        }
-        .gm-hover-popup img {
-            width: 50px;
-            height: 50px;
-            object-fit: cover;
-            border: 1px solid #555;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-        .gm-hover-popup img:hover {
-            transform: scale(1.1);
-            border-color: #ffcc00;
-        }
-        .gm-hover-popup .empty-hint {
-            font-size: 12px;
-            color: #888;
-            padding: 5px;
-        }
-
         /* 互動視窗 (Modal) 樣式 */
         .modal-overlay {
             position: fixed;
@@ -466,7 +431,7 @@
         .modal-box {
             background: #2d2d2d;
             border: 1px solid #555;
-            width: 400px;
+            width: 420px;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8);
@@ -498,6 +463,11 @@
             gap: 15px;
         }
 
+        .modal-action-row {
+            display: flex;
+            gap: 10px;
+        }
+
         .upload-btn, .modal-action-btn {
             background: #4a2323;
             color: white;
@@ -506,6 +476,7 @@
             border-radius: 4px;
             cursor: pointer;
             text-align: center;
+            flex: 1;
         }
         .upload-btn:hover, .modal-action-btn:hover { background: #6b3333; }
 
@@ -518,7 +489,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
+            overflow-y: auto;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px;
             color: #777;
             font-size: 14px;
         }
@@ -527,6 +501,20 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
+        }
+
+        .preview-area .data-thumb {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: transform 0.1s, border-color 0.1s;
+        }
+        .preview-area .data-thumb:hover {
+            transform: scale(1.08);
+            border-color: #ffcc00;
         }
 
         .circular-preview-container {
@@ -615,9 +603,6 @@
         </div>
     </div>
 
-    <!-- 懸浮預覽視窗 -->
-    <div class="gm-hover-popup" id="gmHoverPopup"></div>
-
     <!-- GM 上傳視窗 (Modal) -->
     <div class="modal-overlay" id="gmModal">
         <div class="modal-box">
@@ -627,7 +612,10 @@
             </div>
             <div class="modal-body">
                 <input type="file" id="fileInput" accept="image/*" class="hidden">
-                <button class="upload-btn" id="uploadTriggerBtn">上傳圖片</button>
+                <div class="modal-action-row">
+                    <button class="upload-btn" id="uploadTriggerBtn">上傳圖片</button>
+                    <button class="upload-btn" id="dataViewBtn">資料</button>
+                </div>
                 <div class="preview-area" id="previewArea">
                     <span>圖片預覽區</span>
                 </div>
@@ -814,75 +802,19 @@
             updateMapTransform();
         });
 
-        // 5. GM 工具列與懸浮視窗設定
-        const gmPanel = document.getElementById('gmPanel');
+        // 5. GM 工具列與彈出視窗設定（含「資料」按鍵邏輯）
         const gmModal = document.getElementById('gmModal');
         const modalTitle = document.getElementById('modalTitle');
         const closeModalBtn = document.getElementById('closeModalBtn');
         const gmButtons = document.querySelectorAll('#gmButtonsContainer button');
         const fileInput = document.getElementById('fileInput');
         const uploadTriggerBtn = document.getElementById('uploadTriggerBtn');
+        const dataViewBtn = document.getElementById('dataViewBtn');
         const uploadConfirmBtn = document.getElementById('uploadConfirmBtn');
         const previewArea = document.getElementById('previewArea');
-        const gmHoverPopup = document.getElementById('gmHoverPopup');
 
         let currentToolCategory = '';
         let currentTempImageSrc = '';
-        let hoverTimeout = null;
-        let gmPanelTimeout = null;
-
-        function keepGmPanelOpen() {
-            clearTimeout(gmPanelTimeout);
-            gmPanel.classList.add('force-open');
-        }
-
-        function tryCloseGmPanel() {
-            clearTimeout(gmPanelTimeout);
-            gmPanelTimeout = setTimeout(() => {
-                gmPanel.classList.remove('force-open');
-            }, 150);
-        }
-
-        gmPanel.addEventListener('mouseenter', keepGmPanelOpen);
-        gmPanel.addEventListener('mouseleave', tryCloseGmPanel);
-        gmHoverPopup.addEventListener('mouseenter', keepGmPanelOpen);
-        gmHoverPopup.addEventListener('mouseleave', tryCloseGmPanel);
-
-        function renderHoverPopup(category) {
-            gmHoverPopup.innerHTML = '';
-            const images = gmImages[category];
-            if (!images || images.length === 0) {
-                gmHoverPopup.innerHTML = `<div class="empty-hint">尚無上傳圖片</div>`;
-                return;
-            }
-            images.forEach((imgSrc) => {
-                const img = document.createElement('img');
-                img.src = imgSrc;
-                img.addEventListener('click', () => {
-                    gmHoverPopup.style.display = 'none';
-                    handleImageSelection(category, imgSrc);
-                });
-                gmHoverPopup.appendChild(img);
-            });
-        }
-
-        function showHoverPopup(btn, toolName) {
-            clearTimeout(hoverTimeout);
-            currentToolCategory = toolName;
-            renderHoverPopup(toolName);
-
-            const rect = btn.getBoundingClientRect();
-            gmHoverPopup.style.left = `${rect.left}px`;
-            gmHoverPopup.style.top = `${rect.bottom + 6}px`;
-            gmHoverPopup.style.display = 'flex';
-        }
-
-        function hideHoverPopupWithDelay() {
-            clearTimeout(hoverTimeout);
-            hoverTimeout = setTimeout(() => {
-                gmHoverPopup.style.display = 'none';
-            }, 150);
-        }
 
         gmButtons.forEach(btn => {
             const toolName = btn.getAttribute('data-tool');
@@ -893,25 +825,9 @@
                 previewArea.innerHTML = '<span>圖片預覽區</span>';
                 fileInput.value = '';
                 currentTempImageSrc = '';
+                uploadConfirmBtn.style.display = 'block';
                 gmModal.style.display = 'flex';
-                gmHoverPopup.style.display = 'none';
             });
-
-            btn.addEventListener('mouseenter', () => {
-                showHoverPopup(btn, toolName);
-            });
-
-            btn.addEventListener('mouseleave', () => {
-                hideHoverPopupWithDelay();
-            });
-        });
-
-        gmHoverPopup.addEventListener('mouseenter', () => {
-            clearTimeout(hoverTimeout);
-        });
-
-        gmHoverPopup.addEventListener('mouseleave', () => {
-            hideHoverPopupWithDelay();
         });
 
         closeModalBtn.addEventListener('click', () => {
@@ -935,9 +851,31 @@
                 reader.onload = function(event) {
                     currentTempImageSrc = event.target.result;
                     previewArea.innerHTML = `<img src="${currentTempImageSrc}" alt="預覽圖片">`;
+                    uploadConfirmBtn.style.display = 'block';
                 };
                 reader.readAsDataURL(file);
             }
+        });
+
+        // 點擊「資料」按鍵：顯示該分類已上傳的所有圖片清單
+        dataViewBtn.addEventListener('click', () => {
+            const images = gmImages[currentToolCategory];
+            uploadConfirmBtn.style.display = 'none'; // 瀏覽資料時隱藏上傳確認按鍵
+            if (!images || images.length === 0) {
+                previewArea.innerHTML = '<span style="color: #888;">尚無上傳圖片資料</span>';
+                return;
+            }
+            previewArea.innerHTML = '';
+            images.forEach((imgSrc) => {
+                const thumb = document.createElement('img');
+                thumb.src = imgSrc;
+                thumb.className = 'data-thumb';
+                thumb.addEventListener('click', () => {
+                    gmModal.style.display = 'none';
+                    handleImageSelection(currentToolCategory, imgSrc);
+                });
+                previewArea.appendChild(thumb);
+            });
         });
 
         uploadConfirmBtn.addEventListener('click', () => {
@@ -950,7 +888,7 @@
             }
         });
 
-        // 6. 懸浮視窗點擊圖片後的邏輯
+        // 6. 點擊圖片後的後續動作邏輯
         const mapConfirmModal = document.getElementById('mapConfirmModal');
         const mapPreviewArea = document.getElementById('mapPreviewArea');
         const closeMapConfirmBtn = document.getElementById('closeMapConfirmBtn');
@@ -1020,7 +958,6 @@
             token.style.width = '40px';
             token.style.height = '40px';
 
-            // 預設生成在地圖中央並貼齊網格 (例如格子 25, 25)
             const defaultGridX = 25;
             const defaultGridY = 25;
             token.style.left = `${defaultGridX * 40}px`;
@@ -1030,9 +967,8 @@
             img.src = imgSrc;
             token.appendChild(img);
 
-            // 拖動與貼齊網格
             token.addEventListener('mousedown', (e) => {
-                if (e.button !== 0) return; // 僅處理左鍵拖曳
+                if (e.button !== 0) return;
                 e.stopPropagation();
                 if (activeToken && activeToken !== token) {
                     activeToken.classList.remove('selected');
@@ -1048,7 +984,6 @@
                     let rawX = (event.clientX - mapRect.left - shiftX) / currentScale;
                     let rawY = (event.clientY - mapRect.top - shiftY) / currentScale;
                     
-                    // 以一格 (40px) 為單位吸附網格
                     let snappedX = Math.round(rawX / 40) * 40;
                     let snappedY = Math.round(rawY / 40) * 40;
 
@@ -1064,7 +999,6 @@
                 document.addEventListener('mouseup', onMouseUp, { once: true });
             });
 
-            // 棋子右鍵選單事件
             token.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1075,7 +1009,6 @@
                 token.classList.add('selected');
                 playerContextMenu.style.display = 'none';
 
-                // 根據當前是否為半透明狀態更新選項的可點擊性
                 const isDying = token.classList.contains('dying');
                 if (isDying) {
                     tokenContextDying.classList.add('disabled');
@@ -1090,7 +1023,6 @@
                 tokenContextMenu.style.top = `${e.clientY}px`;
             });
 
-            // 滾輪調整棋子尺寸
             token.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1111,7 +1043,6 @@
             mapContainer.appendChild(token);
         }
 
-        // 棋子右鍵選單各功能動作
         tokenContextDying.addEventListener('click', () => {
             if (activeToken && !tokenContextDying.classList.contains('disabled')) {
                 activeToken.classList.add('dying');
