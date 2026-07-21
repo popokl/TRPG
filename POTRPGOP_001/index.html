@@ -646,6 +646,9 @@
     </div>
 
     <script>
+        // 即時同步頻道設定
+        const syncChannel = new BroadcastChannel('trpg_sync_channel');
+
         // 資料儲存：分類圖片庫
         const gmImages = {
             地圖: [],
@@ -904,6 +907,9 @@
         mapConfirmSwitchBtn.addEventListener('click', () => {
             mapContainer.style.backgroundImage = `url('${selectedImageForAction}')`;
             mapConfirmModal.style.display = 'none';
+            
+            // 廣播地圖切換事件
+            syncChannel.postMessage({ type: 'CHANGE_MAP', imgSrc: selectedImageForAction });
             alert('已成功切換網格地圖背景！');
         });
 
@@ -915,7 +921,20 @@
         });
 
         tokenConfirmBtn.addEventListener('click', () => {
-            createToken(selectedImageForAction);
+            const tokenId = 'token_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+            createToken(tokenId, selectedImageForAction, 25 * 40, 25 * 40, 1, false);
+            
+            // 廣播建立棋子事件
+            syncChannel.postMessage({
+                type: 'CREATE_TOKEN',
+                id: tokenId,
+                imgSrc: selectedImageForAction,
+                left: 25 * 40,
+                top: 25 * 40,
+                gridSize: 1,
+                isDying: false
+            });
+
             tokenModal.style.display = 'none';
         });
 
@@ -926,17 +945,16 @@
         const tokenContextRevive = document.getElementById('tokenContextRevive');
         const tokenContextRemove = document.getElementById('tokenContextRemove');
 
-        function createToken(imgSrc) {
+        function createToken(tokenId, imgSrc, leftPx, topPx, gridSize, isDying) {
             const token = document.createElement('div');
             token.className = 'map-token';
-            token.dataset.gridSize = 1; 
-            token.style.width = '40px';
-            token.style.height = '40px';
-
-            const defaultGridX = 25;
-            const defaultGridY = 25;
-            token.style.left = `${defaultGridX * 40}px`;
-            token.style.top = `${defaultGridY * 40}px`;
+            if (isDying) token.classList.add('dying');
+            token.dataset.tokenId = tokenId;
+            token.dataset.gridSize = gridSize; 
+            token.style.width = `${gridSize * 40}px`;
+            token.style.height = `${gridSize * 40}px`;
+            token.style.left = `${leftPx}px`;
+            token.style.top = `${topPx}px`;
 
             const img = document.createElement('img');
             img.src = imgSrc;
@@ -964,6 +982,14 @@
 
                     token.style.left = `${snappedX}px`;
                     token.style.top = `${snappedY}px`;
+
+                    // 廣播移動事件
+                    syncChannel.postMessage({
+                        type: 'MOVE_TOKEN',
+                        id: tokenId,
+                        left: `${snappedX}px`,
+                        top: `${snappedY}px`
+                    });
                 }
 
                 function onMouseUp() {
@@ -984,8 +1010,8 @@
                 token.classList.add('selected');
                 playerContextMenu.style.display = 'none';
 
-                const isDying = token.classList.contains('dying');
-                if (isDying) {
+                const dyingStatus = token.classList.contains('dying');
+                if (dyingStatus) {
                     tokenContextDying.classList.add('disabled');
                     tokenContextRevive.classList.remove('disabled');
                 } else {
@@ -1001,18 +1027,25 @@
             token.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                let gridSize = parseInt(token.dataset.gridSize);
+                let size = parseInt(token.dataset.gridSize);
                 if (e.deltaY < 0) {
-                    gridSize += 1;
-                    if (gridSize > 10) gridSize = 10;
+                    size += 1;
+                    if (size > 10) size = 10;
                 } else {
-                    gridSize -= 1;
-                    if (gridSize < 1) gridSize = 1;
+                    size -= 1;
+                    if (size < 1) size = 1;
                 }
-                token.dataset.gridSize = gridSize;
-                const newSize = gridSize * 40;
+                token.dataset.gridSize = size;
+                const newSize = size * 40;
                 token.style.width = `${newSize}px`;
                 token.style.height = `${newSize}px`;
+
+                // 廣播縮放事件
+                syncChannel.postMessage({
+                    type: 'RESIZE_TOKEN',
+                    id: tokenId,
+                    gridSize: size
+                });
             }, { passive: false });
 
             mapContainer.appendChild(token);
@@ -1021,6 +1054,8 @@
         tokenContextDying.addEventListener('click', () => {
             if (activeToken && !tokenContextDying.classList.contains('disabled')) {
                 activeToken.classList.add('dying');
+                const id = activeToken.dataset.tokenId;
+                syncChannel.postMessage({ type: 'UPDATE_TOKEN_STATUS', id, status: 'dying' });
             }
             tokenContextMenu.style.display = 'none';
         });
@@ -1028,14 +1063,18 @@
         tokenContextRevive.addEventListener('click', () => {
             if (activeToken && !tokenContextRevive.classList.contains('disabled')) {
                 activeToken.classList.remove('dying');
+                const id = activeToken.dataset.tokenId;
+                syncChannel.postMessage({ type: 'UPDATE_TOKEN_STATUS', id, status: 'normal' });
             }
             tokenContextMenu.style.display = 'none';
         });
 
         tokenContextRemove.addEventListener('click', () => {
             if (activeToken) {
+                const id = activeToken.dataset.tokenId;
                 activeToken.remove();
                 activeToken = null;
+                syncChannel.postMessage({ type: 'REMOVE_TOKEN', id });
             }
             tokenContextMenu.style.display = 'none';
         });
@@ -1049,7 +1088,44 @@
             }
         });
 
-        // 8. 權限控制 (透過網址參數自動區分 GM 與玩家)
+        // 8. 監聽廣播頻道以實現即時同步
+        syncChannel.onmessage = (event) => {
+            const data = event.data;
+            if (data.type === 'CHANGE_MAP') {
+                mapContainer.style.backgroundImage = `url('${data.imgSrc}')`;
+            } else if (data.type === 'CREATE_TOKEN') {
+                createToken(data.id, data.imgSrc, parseInt(data.left), parseInt(data.top), data.gridSize, data.isDying);
+            } else if (data.type === 'MOVE_TOKEN') {
+                const token = document.querySelector(`[data-token-id="${data.id}"]`);
+                if (token) {
+                    token.style.left = data.left;
+                    token.style.top = data.top;
+                }
+            } else if (data.type === 'RESIZE_TOKEN') {
+                const token = document.querySelector(`[data-token-id="${data.id}"]`);
+                if (token) {
+                    token.dataset.gridSize = data.gridSize;
+                    token.style.width = `${data.gridSize * 40}px`;
+                    token.style.height = `${data.gridSize * 40}px`;
+                }
+            } else if (data.type === 'UPDATE_TOKEN_STATUS') {
+                const token = document.querySelector(`[data-token-id="${data.id}"]`);
+                if (token) {
+                    if (data.status === 'dying') {
+                        token.classList.add('dying');
+                    } else {
+                        token.classList.remove('dying');
+                    }
+                }
+            } else if (data.type === 'REMOVE_TOKEN') {
+                const token = document.querySelector(`[data-token-id="${data.id}"]`);
+                if (token) {
+                    token.remove();
+                }
+            }
+        };
+
+        // 9. 權限控制 (透過網址參數自動區分 GM 與玩家)
         const urlParams = new URLSearchParams(window.location.search);
         const isGM = urlParams.get('role') === 'gm'; 
 
