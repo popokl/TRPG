@@ -628,6 +628,23 @@
             margin-top: 2px;
         }
 
+        /* 物品懸浮視窗 (Tooltip) 樣式 */
+        .item-tooltip {
+            position: fixed;
+            background: rgba(30, 30, 30, 0.95);
+            border: 1px solid #777;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            display: none;
+            z-index: 1000;
+            max-width: 220px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+            line-height: 1.4;
+        }
+
         .hidden { display: none !important; }
     </style>
 </head>
@@ -877,6 +894,9 @@
         </div>
     </div>
 
+    <!-- 物品懸浮視窗 (Tooltip) -->
+    <div class="item-tooltip" id="itemTooltip"></div>
+
     <script>
         // 權限控制
         const urlParams = new URLSearchParams(window.location.search);
@@ -914,6 +934,7 @@
         const itemEditModal = document.getElementById('itemEditModal');
         const closeItemEditBtn = document.getElementById('closeItemEditBtn');
         const itemEditConfirmBtn = document.getElementById('itemEditConfirmBtn');
+        const itemTooltip = document.getElementById('itemTooltip');
         
         let activePlayerCard = null;
         let activePlayerObj = null;
@@ -922,6 +943,8 @@
         let isPlayerJoined = false;
         let isModalEditable = true;
 
+        const playersDataMap = new Map(); // 儲存所有角色的資料實例
+
         // 初始化預設角色資料結構
         function createDefaultCharacterData() {
             const items = [];
@@ -929,14 +952,17 @@
                 let itemData = { enabled: i < 7, name: '', desc: '', qty: 1, type: 'normal' };
                 if (i === 0) {
                     itemData.name = '休憩骰';
+                    itemData.desc = '用於在安全地點進行短休恢復生命與體力。';
                     itemData.type = 'rest_dice';
                     itemData.qty = 3;
                 } else if (i === 1) {
                     itemData.name = '金幣';
+                    itemData.desc = '流通於世界的通用貨幣。';
                     itemData.type = 'gold';
                     itemData.qty = 50;
                 } else if (i === 2) {
                     itemData.name = '專有道具';
+                    itemData.desc = '具有神祕力量的特殊專用道具。';
                     itemData.type = 'unique';
                 }
                 items.push(itemData);
@@ -978,7 +1004,7 @@
             });
         }
 
-        // 渲染 20 格物品至視窗
+        // 渲染 20 格物品至視窗，並繫結懸浮視窗事件
         const itemGridBox = document.getElementById('itemGridBox');
         function renderItemGridInModal(charData, isEditable) {
             itemGridBox.innerHTML = '';
@@ -1006,6 +1032,29 @@
                     }
                 }
 
+                // 滑鼠懸浮視窗 (Tooltip) 事件
+                itemBox.addEventListener('mouseenter', (e) => {
+                    if (!item.enabled) return;
+                    let tooltipContent = item.name ? `<strong>${item.name}</strong>` : `格子 ${idx + 1}`;
+                    if (item.desc) {
+                        tooltipContent += `<br><span style="color: #bbb;">${item.desc}</span>`;
+                    }
+                    if (item.type === 'rest_dice' || item.type === 'gold') {
+                        tooltipContent += `<br><span style="color: #ffcc00;">數量: ${item.qty}</span>`;
+                    }
+                    itemTooltip.innerHTML = tooltipContent;
+                    itemTooltip.style.display = 'block';
+                });
+
+                itemBox.addEventListener('mousemove', (e) => {
+                    itemTooltip.style.left = `${e.clientX + 15}px`;
+                    itemTooltip.style.top = `${e.clientY + 15}px`;
+                });
+
+                itemBox.addEventListener('mouseleave', () => {
+                    itemTooltip.style.display = 'none';
+                });
+
                 // 綁定物品格右鍵事件 (僅在可編輯模式下運作)
                 if (isEditable) {
                     itemBox.addEventListener('contextmenu', (e) => {
@@ -1013,6 +1062,7 @@
                         e.stopPropagation();
                         activeItemSlotIndex = idx;
                         playerContextMenu.style.display = 'none';
+                        itemTooltip.style.display = 'none';
 
                         const itemContextGet = document.getElementById('itemContextGet');
                         const itemContextDisable = document.getElementById('itemContextDisable');
@@ -1060,6 +1110,7 @@
 
         closeCharModalBtn.addEventListener('click', () => {
             charModal.style.display = 'none';
+            itemTooltip.style.display = 'none';
         });
 
         function loadDataIntoCharModal(charData, isEditable) {
@@ -1200,6 +1251,7 @@
         charConfirmBtn.addEventListener('click', () => {
             if (!isModalEditable) {
                 charModal.style.display = 'none';
+                itemTooltip.style.display = 'none';
                 return;
             }
 
@@ -1221,21 +1273,30 @@
                 isPlayerJoined = true;
                 lockAllFeatures(false);
                 if (joinBtn) joinBtn.style.display = 'none';
+                playersDataMap.set(targetChar.id, targetChar);
                 renderPlayerCardUI(targetChar);
                 syncChannel.postMessage({ type: 'ADD_PLAYER', playerData: targetChar });
             } else if (editingTargetPlayer) {
-                // GM 編輯後更新 UI
-                updatePlayerCardUI(editingTargetPlayer);
-                syncChannel.postMessage({ type: 'UPDATE_PLAYER', playerData: editingTargetPlayer });
+                // GM 編輯後更新 UI 與同步
+                playersDataMap.set(targetChar.id, targetChar);
+                updatePlayerCardUI(targetChar);
+                syncChannel.postMessage({ type: 'UPDATE_PLAYER', playerData: targetChar });
             }
 
             charModal.style.display = 'none';
+            itemTooltip.style.display = 'none';
         });
 
         // 建立或更新畫面上玩家卡片 UI
         const activePlayerCardsMap = new Map();
 
         function renderPlayerCardUI(charData) {
+            playersDataMap.set(charData.id, charData);
+            if (activePlayerCardsMap.has(charData.id)) {
+                updatePlayerCardUI(charData);
+                return;
+            }
+
             const playerCard = document.createElement('div');
             playerCard.className = 'player-card';
             playerCard.dataset.playerId = charData.id;
@@ -1249,6 +1310,19 @@
                     <div class="stat-box shield-box"><label>護盾: <input type="number" class="stat-input shield-input" value="${charData.shield}" ${!isGM ? 'disabled' : ''}></label></div>
                 </div>
             `;
+
+            // 監聽 GM 直接在卡片上修改 HP / MP / 護盾
+            if (isGM) {
+                playerCard.querySelectorAll('.stat-input').forEach(input => {
+                    input.addEventListener('change', (e) => {
+                        const val = parseInt(e.target.value) || 0;
+                        if (e.target.classList.contains('hp-input')) charData.hp = val;
+                        if (e.target.classList.contains('mp-input')) charData.mp = val;
+                        if (e.target.classList.contains('shield-input')) charData.shield = val;
+                        syncChannel.postMessage({ type: 'UPDATE_PLAYER', playerData: charData });
+                    });
+                });
+            }
 
             // 左鍵點擊玩家欄位跳出該玩家角色卡資訊 (GM 可編輯，玩家只能閱讀)
             playerCard.addEventListener('click', (e) => {
@@ -1278,12 +1352,15 @@
         }
 
         function updatePlayerCardUI(charData) {
+            playersDataMap.set(charData.id, charData);
             const cardEl = activePlayerCardsMap.get(charData.id);
             if (cardEl) {
                 cardEl.querySelector('.card-title-text').textContent = `${charData.name} (${charData.race} / ${charData.charClass})`;
                 cardEl.querySelector('.hp-input').value = charData.hp;
                 cardEl.querySelector('.mp-input').value = charData.mp;
                 cardEl.querySelector('.shield-input').value = charData.shield;
+            } else {
+                renderPlayerCardUI(charData);
             }
         }
 
@@ -1304,6 +1381,7 @@
                 const id = activePlayerObj.id;
                 activePlayerCard.remove();
                 activePlayerCardsMap.delete(id);
+                playersDataMap.delete(id);
                 activePlayerCard = null;
                 activePlayerObj = null;
                 syncChannel.postMessage({ type: 'REMOVE_PLAYER', id });
@@ -1585,9 +1663,13 @@
                 renderPlayerCardUI(data.playerData);
             } else if (data.type === 'UPDATE_PLAYER') {
                 updatePlayerCardUI(data.playerData);
+                // 如果目前正在編輯同一張角色卡，同步重新載入視窗內容
+                if (editingTargetPlayer && editingTargetPlayer.id === data.playerData.id && charModal.style.display === 'flex') {
+                    loadDataIntoCharModal(data.playerData, isGM);
+                }
             } else if (data.type === 'REMOVE_PLAYER') {
                 const cardEl = activePlayerCardsMap.get(data.id);
-                if (cardEl) { cardEl.remove(); activePlayerCardsMap.delete(data.id); }
+                if (cardEl) { cardEl.remove(); activePlayerCardsMap.delete(data.id); playersDataMap.delete(data.id); }
             }
         };
     </script>
