@@ -938,7 +938,7 @@
         
         let activePlayerCard = null;
         let activePlayerObj = null;
-        let editingTargetPlayer = null; // GM 正在編輯的角色物件
+        let editingTargetPlayer = null; // 當前正開啟並檢視/編輯中的角色物件
         let activeItemSlotIndex = null;
         let isPlayerJoined = false;
         let isModalEditable = true;
@@ -1101,7 +1101,7 @@
         // 開啟編輯角色卡視窗
         if (joinBtn) {
             joinBtn.addEventListener('click', () => {
-                editingTargetPlayer = null;
+                editingTargetPlayer = currentPlayerProfile;
                 document.getElementById('charModalTitle').textContent = '編輯角色卡';
                 loadDataIntoCharModal(currentPlayerProfile, true);
                 charModal.style.display = 'flex';
@@ -1111,6 +1111,7 @@
         closeCharModalBtn.addEventListener('click', () => {
             charModal.style.display = 'none';
             itemTooltip.style.display = 'none';
+            editingTargetPlayer = null;
         });
 
         function loadDataIntoCharModal(charData, isEditable) {
@@ -1214,19 +1215,17 @@
 
         document.getElementById('itemContextDisable').addEventListener('click', () => {
             itemContextMenu.style.display = 'none';
-            const targetChar = editingTargetPlayer || currentPlayerProfile;
-            if (activeItemSlotIndex !== null) {
-                targetChar.items[activeItemSlotIndex].enabled = false;
-                renderItemGridInModal(targetChar, true);
+            if (editingTargetPlayer && activeItemSlotIndex !== null) {
+                editingTargetPlayer.items[activeItemSlotIndex].enabled = false;
+                renderItemGridInModal(editingTargetPlayer, isModalEditable);
             }
         });
 
         document.getElementById('itemContextEnable').addEventListener('click', () => {
             itemContextMenu.style.display = 'none';
-            const targetChar = editingTargetPlayer || currentPlayerProfile;
-            if (activeItemSlotIndex !== null) {
-                targetChar.items[activeItemSlotIndex].enabled = true;
-                renderItemGridInModal(targetChar, true);
+            if (editingTargetPlayer && activeItemSlotIndex !== null) {
+                editingTargetPlayer.items[activeItemSlotIndex].enabled = true;
+                renderItemGridInModal(editingTargetPlayer, isModalEditable);
             }
         });
 
@@ -1237,12 +1236,11 @@
         itemEditConfirmBtn.addEventListener('click', () => {
             const itemName = document.getElementById('inputItemName').value.trim();
             const itemDesc = document.getElementById('inputItemDesc').value.trim();
-            const targetChar = editingTargetPlayer || currentPlayerProfile;
 
-            if (activeItemSlotIndex !== null) {
-                targetChar.items[activeItemSlotIndex].name = itemName;
-                targetChar.items[activeItemSlotIndex].desc = itemDesc;
-                renderItemGridInModal(targetChar, true);
+            if (editingTargetPlayer && activeItemSlotIndex !== null) {
+                editingTargetPlayer.items[activeItemSlotIndex].name = itemName;
+                editingTargetPlayer.items[activeItemSlotIndex].desc = itemDesc;
+                renderItemGridInModal(editingTargetPlayer, isModalEditable);
             }
             itemEditModal.style.display = 'none';
         });
@@ -1252,39 +1250,41 @@
             if (!isModalEditable) {
                 charModal.style.display = 'none';
                 itemTooltip.style.display = 'none';
+                editingTargetPlayer = null;
                 return;
             }
 
-            const targetChar = editingTargetPlayer || currentPlayerProfile;
+            if (editingTargetPlayer) {
+                editingTargetPlayer.name = inputCharName.value.trim() || '未命名冒險者';
+                editingTargetPlayer.race = displayRace.textContent;
+                editingTargetPlayer.charClass = displayClass.textContent;
 
-            targetChar.name = inputCharName.value.trim() || '未命名冒險者';
-            targetChar.race = displayRace.textContent;
-            targetChar.charClass = displayClass.textContent;
+                document.querySelectorAll('.stat-field').forEach(input => {
+                    editingTargetPlayer.stats[input.dataset.stat] = parseInt(input.value) || 0;
+                });
+                document.querySelectorAll('.prof-field').forEach(input => {
+                    editingTargetPlayer.proficiencies[input.dataset.prof] = parseInt(input.value) || 0;
+                });
 
-            document.querySelectorAll('.stat-field').forEach(input => {
-                targetChar.stats[input.dataset.stat] = parseInt(input.value) || 0;
-            });
-            document.querySelectorAll('.prof-field').forEach(input => {
-                targetChar.proficiencies[input.dataset.prof] = parseInt(input.value) || 0;
-            });
-
-            if (!editingTargetPlayer && !isPlayerJoined) {
-                // 玩家首次加入
-                isPlayerJoined = true;
-                lockAllFeatures(false);
-                if (joinBtn) joinBtn.style.display = 'none';
-                playersDataMap.set(targetChar.id, targetChar);
-                renderPlayerCardUI(targetChar);
-                syncChannel.postMessage({ type: 'ADD_PLAYER', playerData: targetChar });
-            } else if (editingTargetPlayer) {
-                // GM 編輯後更新 UI 與同步
-                playersDataMap.set(targetChar.id, targetChar);
-                updatePlayerCardUI(targetChar);
-                syncChannel.postMessage({ type: 'UPDATE_PLAYER', playerData: targetChar });
+                if (!isPlayerJoined && editingTargetPlayer === currentPlayerProfile) {
+                    // 玩家首次加入
+                    isPlayerJoined = true;
+                    lockAllFeatures(false);
+                    if (joinBtn) joinBtn.style.display = 'none';
+                    playersDataMap.set(editingTargetPlayer.id, editingTargetPlayer);
+                    renderPlayerCardUI(editingTargetPlayer);
+                    syncChannel.postMessage({ type: 'ADD_PLAYER', playerData: editingTargetPlayer });
+                } else {
+                    // 更新現有角色卡資料並同步
+                    playersDataMap.set(editingTargetPlayer.id, editingTargetPlayer);
+                    updatePlayerCardUI(editingTargetPlayer);
+                    syncChannel.postMessage({ type: 'UPDATE_PLAYER', playerData: editingTargetPlayer });
+                }
             }
 
             charModal.style.display = 'none';
             itemTooltip.style.display = 'none';
+            editingTargetPlayer = null;
         });
 
         // 建立或更新畫面上玩家卡片 UI
@@ -1324,12 +1324,13 @@
                 });
             }
 
-            // 左鍵點擊玩家欄位跳出該玩家角色卡資訊 (GM 可編輯，玩家只能閱讀)
+            // 左鍵點擊玩家欄位跳出該玩家角色卡資訊 (GM 可編輯，玩家只能閱讀自己的或他人唯讀)
             playerCard.addEventListener('click', (e) => {
                 if (e.target.tagName === 'INPUT') return;
                 editingTargetPlayer = charData;
+                const canEdit = isGM || (!isGM && charData.id === currentPlayerProfile.id);
                 document.getElementById('charModalTitle').textContent = `角色卡資訊 - ${charData.name}`;
-                loadDataIntoCharModal(charData, isGM);
+                loadDataIntoCharModal(charData, canEdit);
                 charModal.style.display = 'flex';
             });
 
@@ -1663,9 +1664,10 @@
                 renderPlayerCardUI(data.playerData);
             } else if (data.type === 'UPDATE_PLAYER') {
                 updatePlayerCardUI(data.playerData);
-                // 如果目前正在編輯同一張角色卡，同步重新載入視窗內容
+                // 如果目前正在編輯/檢視同一張角色卡，同步更新視窗內的數值與物品內容
                 if (editingTargetPlayer && editingTargetPlayer.id === data.playerData.id && charModal.style.display === 'flex') {
-                    loadDataIntoCharModal(data.playerData, isGM);
+                    const canEdit = isGM || (!isGM && data.playerData.id === currentPlayerProfile.id);
+                    loadDataIntoCharModal(data.playerData, canEdit);
                 }
             } else if (data.type === 'REMOVE_PLAYER') {
                 const cardEl = activePlayerCardsMap.get(data.id);
