@@ -681,6 +681,7 @@
 
     <!-- 玩家卡片右鍵選單 -->
     <div class="context-menu" id="playerContextMenu">
+        <div class="context-menu-item" id="contextViewPlayer">檢視</div>
         <div class="context-menu-item" id="contextEditPlayer">編輯</div>
         <div class="context-menu-item" id="contextRemovePlayer">剔除</div>
     </div>
@@ -974,7 +975,7 @@
                 race: '吸血鬼',
                 charClass: '聖盾衛',
                 stats: { 力量: 10, 敏捷: 10, 體質: 10, 智力: 10, 感知: 10, 魅力: 10 },
-                proficiencies: { 運動: 0, 特技: 0, 巧手: 0, 躲藏: 0, 智慧: 0, 奧術: 0, 烹飪: 0, 急救: 0, 訓獸: 0, 察覺: 0,調查: 0, 求生: 0, 表演: 0, 說服: 0, 威嚇: 0 },
+                proficiencies: { 運動: 0, 特技: 0, 巧手: 0, 躲藏: 0, 智慧: 0, 奧術: 0, 烹飪: 0, 急救: 0, 訓獸: 0, 察覺: 0, 調查: 0, 求生: 0, 表演: 0, 說服: 0, 威嚇: 0 },
                 items: items,
                 hp: 20,
                 mp: 10,
@@ -1098,7 +1099,7 @@
             }
         }
 
-        // 開啟編輯角色卡視窗
+        // 開啟編輯角色卡視窗 (玩家初次加入時)
         if (joinBtn) {
             joinBtn.addEventListener('click', () => {
                 editingTargetPlayer = currentPlayerProfile;
@@ -1324,28 +1325,41 @@
                 });
             }
 
-            // 左鍵點擊玩家欄位跳出該玩家角色卡資訊 (GM 可編輯，玩家只能閱讀自己的或他人唯讀)
+            // 玩家左鍵點擊玩家欄位跳出該玩家角色卡資訊 (GM 可編輯，玩家左鍵點擊一律只能閱讀/唯讀)
             playerCard.addEventListener('click', (e) => {
                 if (e.target.tagName === 'INPUT') return;
                 editingTargetPlayer = charData;
-                const canEdit = isGM || (!isGM && charData.id === currentPlayerProfile.id);
+                const canEdit = isGM; // 玩家左鍵點擊只能閱讀，不能編輯
                 document.getElementById('charModalTitle').textContent = `角色卡資訊 - ${charData.name}`;
                 loadDataIntoCharModal(charData, canEdit);
                 charModal.style.display = 'flex';
             });
 
-            // GM 右鍵點擊玩家欄位跳出 "編輯" 與 "剔除"
+            // 右鍵點擊玩家欄位 (GM 顯示「編輯」與「剔除」，玩家顯示「檢視」)
             playerCard.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                activePlayerCard = playerCard;
+                activePlayerObj = charData;
+                tokenContextMenu.style.display = 'none';
+
+                const viewItem = document.getElementById('contextViewPlayer');
+                const editItem = document.getElementById('contextEditPlayer');
+                const removeItem = document.getElementById('contextRemovePlayer');
+
                 if (isGM) {
-                    activePlayerCard = playerCard;
-                    activePlayerObj = charData;
-                    tokenContextMenu.style.display = 'none';
-                    playerContextMenu.style.display = 'block';
-                    playerContextMenu.style.left = `${e.clientX}px`;
-                    playerContextMenu.style.top = `${e.clientY}px`;
+                    viewItem.style.display = 'none';
+                    editItem.style.display = 'block';
+                    removeItem.style.display = 'block';
+                } else {
+                    viewItem.style.display = 'block';
+                    editItem.style.display = 'none';
+                    removeItem.style.display = 'none';
                 }
+
+                playerContextMenu.style.display = 'block';
+                playerContextMenu.style.left = `${e.clientX}px`;
+                playerContextMenu.style.top = `${e.clientY}px`;
             });
 
             playerList.appendChild(playerCard);
@@ -1364,6 +1378,17 @@
                 renderPlayerCardUI(charData);
             }
         }
+
+        // 右鍵選單動作：檢視 (玩家專用)
+        document.getElementById('contextViewPlayer').addEventListener('click', () => {
+            playerContextMenu.style.display = 'none';
+            if (activePlayerObj) {
+                editingTargetPlayer = activePlayerObj;
+                document.getElementById('charModalTitle').textContent = `角色卡資訊 - ${activePlayerObj.name}`;
+                loadDataIntoCharModal(activePlayerObj, false); // 唯讀模式
+                charModal.style.display = 'flex';
+            }
+        });
 
         // GM 右鍵選單：編輯與剔除
         document.getElementById('contextEditPlayer').addEventListener('click', () => {
@@ -1664,9 +1689,9 @@
                 renderPlayerCardUI(data.playerData);
             } else if (data.type === 'UPDATE_PLAYER') {
                 updatePlayerCardUI(data.playerData);
-                // 如果目前正在編輯/檢視同一張角色卡，同步更新視窗內的數值與物品內容
+                // 如果目前正在檢視該角色卡，即時同步更新視窗內的內容與唯讀/編輯狀態
                 if (editingTargetPlayer && editingTargetPlayer.id === data.playerData.id && charModal.style.display === 'flex') {
-                    const canEdit = isGM || (!isGM && data.playerData.id === currentPlayerProfile.id);
+                    const canEdit = isGM;
                     loadDataIntoCharModal(data.playerData, canEdit);
                 }
             } else if (data.type === 'REMOVE_PLAYER') {
