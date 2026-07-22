@@ -1320,6 +1320,7 @@
                         if (e.target.classList.contains('hp-input')) charData.hp = val;
                         if (e.target.classList.contains('mp-input')) charData.mp = val;
                         if (e.target.classList.contains('shield-input')) charData.shield = val;
+                        playersDataMap.set(charData.id, charData);
                         syncChannel.postMessage({ type: 'UPDATE_PLAYER', playerData: charData });
                     });
                 });
@@ -1328,10 +1329,11 @@
             // 玩家左鍵點擊玩家欄位跳出該玩家角色卡資訊 (GM 可編輯，玩家左鍵點擊一律只能閱讀/唯讀)
             playerCard.addEventListener('click', (e) => {
                 if (e.target.tagName === 'INPUT') return;
-                editingTargetPlayer = charData;
-                const canEdit = isGM; // 玩家左鍵點擊只能閱讀，不能編輯
-                document.getElementById('charModalTitle').textContent = `角色卡資訊 - ${charData.name}`;
-                loadDataIntoCharModal(charData, canEdit);
+                const currentData = playersDataMap.get(charData.id) || charData;
+                editingTargetPlayer = currentData;
+                const canEdit = isGM; 
+                document.getElementById('charModalTitle').textContent = `角色卡資訊 - ${currentData.name}`;
+                loadDataIntoCharModal(currentData, canEdit);
                 charModal.style.display = 'flex';
             });
 
@@ -1340,7 +1342,7 @@
                 e.preventDefault();
                 e.stopPropagation();
                 activePlayerCard = playerCard;
-                activePlayerObj = charData;
+                activePlayerObj = playersDataMap.get(charData.id) || charData;
                 tokenContextMenu.style.display = 'none';
 
                 const viewItem = document.getElementById('contextViewPlayer');
@@ -1383,9 +1385,10 @@
         document.getElementById('contextViewPlayer').addEventListener('click', () => {
             playerContextMenu.style.display = 'none';
             if (activePlayerObj) {
-                editingTargetPlayer = activePlayerObj;
-                document.getElementById('charModalTitle').textContent = `角色卡資訊 - ${activePlayerObj.name}`;
-                loadDataIntoCharModal(activePlayerObj, false); // 唯讀模式
+                const currentData = playersDataMap.get(activePlayerObj.id) || activePlayerObj;
+                editingTargetPlayer = currentData;
+                document.getElementById('charModalTitle').textContent = `角色卡資訊 - ${currentData.name}`;
+                loadDataIntoCharModal(currentData, false); // 唯讀模式
                 charModal.style.display = 'flex';
             }
         });
@@ -1394,9 +1397,10 @@
         document.getElementById('contextEditPlayer').addEventListener('click', () => {
             playerContextMenu.style.display = 'none';
             if (activePlayerObj) {
-                editingTargetPlayer = activePlayerObj;
-                document.getElementById('charModalTitle').textContent = `編輯角色卡 - ${activePlayerObj.name}`;
-                loadDataIntoCharModal(activePlayerObj, true);
+                const currentData = playersDataMap.get(activePlayerObj.id) || activePlayerObj;
+                editingTargetPlayer = currentData;
+                document.getElementById('charModalTitle').textContent = `編輯角色卡 - ${currentData.name}`;
+                loadDataIntoCharModal(currentData, true);
                 charModal.style.display = 'flex';
             }
         });
@@ -1688,11 +1692,19 @@
             } else if (data.type === 'ADD_PLAYER') {
                 renderPlayerCardUI(data.playerData);
             } else if (data.type === 'UPDATE_PLAYER') {
+                playersDataMap.set(data.playerData.id, data.playerData);
                 updatePlayerCardUI(data.playerData);
-                // 如果目前正在檢視該角色卡，即時同步更新視窗內的內容與唯讀/編輯狀態
-                if (editingTargetPlayer && editingTargetPlayer.id === data.playerData.id && charModal.style.display === 'flex') {
-                    const canEdit = isGM;
-                    loadDataIntoCharModal(data.playerData, canEdit);
+                
+                // 即時更新當前正在檢視/編輯中的角色卡視窗內容
+                if (editingTargetPlayer && editingTargetPlayer.id === data.playerData.id) {
+                    editingTargetPlayer = data.playerData;
+                    if (charModal.style.display === 'flex') {
+                        const canEdit = isGM;
+                        loadDataIntoCharModal(editingTargetPlayer, canEdit);
+                    }
+                }
+                if (activePlayerObj && activePlayerObj.id === data.playerData.id) {
+                    activePlayerObj = data.playerData;
                 }
             } else if (data.type === 'REMOVE_PLAYER') {
                 const cardEl = activePlayerCardsMap.get(data.id);
